@@ -82,15 +82,6 @@ body {
 .nav-item-icon  { font-size: 0.95rem; flex-shrink: 0; width: 1.2rem; text-align: center; }
 .nav-item-label { flex: 1; }
 
-/* WS section wrapper */
-.sidebar-ws-wrap {
-  flex: 1;
-  display: flex; flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
-  padding: 0 0.7rem;
-}
-
 /* Sidebar version footer */
 .sidebar-footer {
   padding: 0.6rem 1.25rem;
@@ -101,39 +92,125 @@ body {
 }
 
 /* ────────────────────────────────────────────────────────────
-   3. RIGHT SIDEBAR — Confidence Legend
+   3. RIGHT SIDEBAR — Live Events + Confidence Legend
 ──────────────────────────────────────────────────────────── */
 .right-sidebar {
   position: fixed;
   top: 0; right: 0; bottom: 0;
-  width: 260px;
-  background: #ffffff;
-  border-left: 1px solid #e8edf4;
-  box-shadow: -2px 0 14px rgba(0,0,0,0.04);
+  width: 280px;
+  background: #0d1120;
+  border-left: 1px solid #1a2540;
+  box-shadow: -2px 0 18px rgba(0,0,0,0.18);
   display: flex; flex-direction: column;
   z-index: 1030;
   overflow: hidden;
 }
 
-.right-sidebar-header {
-  padding: 1.2rem 1.1rem 0.85rem;
-  border-bottom: 1px solid #f0f4fa;
+/* ── Right sidebar topbar ── */
+.rs-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.65rem 0.9rem 0.6rem;
+  background: #070b18;
+  border-bottom: 1px solid #1a2540;
   flex-shrink: 0;
 }
-.right-sidebar-title {
-  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
-  text-transform: uppercase; color: #334155;
+.rs-topbar-brand {
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.rs-topbar-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #2a3a5a; transition: background 0.3s, box-shadow 0.3s;
+}
+.rs-topbar-dot.connected { background: #22c55e; box-shadow: 0 0 5px rgba(34,197,94,0.65); }
+.rs-topbar-label {
+  font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.12em; color: rgba(180,210,255,0.75);
+}
+.rs-collapse-btn {
+  background: none; border: none; cursor: pointer;
+  color: rgba(255,255,255,0.3); font-size: 1rem; line-height: 1;
+  padding: 0.15rem 0.35rem; border-radius: 4px;
+  transition: color 0.15s ease, background 0.15s ease;
+  transform: rotate(0deg); transition: transform 0.25s ease, color 0.15s;
+}
+.rs-collapse-btn:hover { color: #fff; background: rgba(255,255,255,0.08); }
+.right-sidebar.rs-collapsed .rs-collapse-btn { transform: rotate(180deg); }
+
+/* ── Accent divider ── */
+.rs-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, #4f46e5 50%, transparent 100%);
+  flex-shrink: 0;
+  opacity: 0.45;
 }
 
-.right-sidebar-body {
-  flex: 1; overflow-y: auto;
-  padding: 0.85rem 1.1rem;
+/* ── Collapsed state ── */
+.right-sidebar.rs-collapsed {
+  transform: translateX(calc(100% - 2.4rem));
+}
+.right-sidebar.rs-collapsed .rs-pane { opacity: 0; pointer-events: none; }
+
+/* ── Pane shared base ── */
+.rs-pane {
+  display: flex; flex-direction: column;
+  min-height: 0;
 }
 
-/* Scrollbar styling for right sidebar */
-.right-sidebar-body::-webkit-scrollbar { width: 4px; }
-.right-sidebar-body::-webkit-scrollbar-track { background: transparent; }
-.right-sidebar-body::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+.rs-pane-hd {
+  display: flex; align-items: center; gap: 0.45rem;
+  padding: 0.6rem 0.9rem 0.55rem;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.rs-pane-icon { font-size: 0.85rem; line-height: 1; }
+.rs-pane-title {
+  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: rgba(200,212,240,0.7);
+}
+
+/* ── Events pane (top, dark terminal) ── */
+.rs-events-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex; flex-direction: column;
+}
+.rs-events-body {
+  flex: 1; display: flex; flex-direction: column;
+  min-height: 0; overflow: hidden;
+}
+/* ws-panel partial: strip outer chrome so it blends flush into the sidebar */
+.rs-events-body .sidebar-ws-panel {
+  flex: 1;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: #080d1a !important;
+}
+.rs-events-body .ws-panel-header {
+  border-radius: 0;
+  background: #0b1020 !important;
+  border-bottom-color: #1a2540;
+}
+
+/* ── Legend pane (bottom, dark themed) ── */
+.rs-legend-pane {
+  flex-shrink: 0;
+  background: #0d1120;
+  border-top: 1px solid #1a2540;
+}
+.rs-pane-hd {
+  background: #0d1120;
+}
+.rs-legend-body {
+  overflow-y: auto;
+  padding: 0.5rem 0.8rem 0.75rem;
+  background: #0d1120;
+  scrollbar-width: thin;
+  scrollbar-color: #1e2d4a transparent;
+}
+.rs-legend-body::-webkit-scrollbar       { width: 3px; }
+.rs-legend-body::-webkit-scrollbar-track { background: transparent; }
+.rs-legend-body::-webkit-scrollbar-thumb { background: #1e2d4a; border-radius: 3px; }
 
 /* ────────────────────────────────────────────────────────────
    3b. MOBILE SIDEBAR OVERLAY
@@ -152,7 +229,7 @@ body {
 ──────────────────────────────────────────────────────────── */
 .main-area {
   margin-left: 240px;
-  margin-right: 260px;
+  margin-right: 280px;
   min-height: 100vh;
   display: flex; flex-direction: column;
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1),

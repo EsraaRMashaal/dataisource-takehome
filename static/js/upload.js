@@ -60,7 +60,8 @@ async function run() {
       const m = JSON.stringify(data).match(/id=([\w-]+)/);
       if (!m) { setStatus(`Duplicate: ${data.detail?.detail || "already exists"}`, "error"); uploadBtn.disabled = false; return; }
       setStatus("Already ingested — loading existing record…", "info");
-      doc = await apiGetDocument(m[1]);
+      const { data: existing } = await apiGetDocument(m[1]);
+      doc = existing;
     } else if (!res.ok) {
       setStatus(`Error ${res.status}: ${data.detail?.detail || data.detail || res.statusText}`, "error");
       uploadBtn.disabled = false; return;
@@ -78,7 +79,7 @@ async function run() {
 
   setStatus("Fetching extracted data…", "info");
 
-  const [kw, en] = await Promise.all([
+  const [{ data: kw }, { data: en }] = await Promise.all([
     apiGetKeywords(doc.id),
     apiGetEntities(doc.id),
   ]);
@@ -125,7 +126,7 @@ async function deleteUploadDoc() {
   if (!confirmed) return;
 
   try {
-    const res = await apiDeleteDocument(window._currentDocId);
+    const { res, data } = await apiDeleteDocument(window._currentDocId);
 
     if (res.ok) {
       setStatus("Deleted successfully", "success");
@@ -141,8 +142,7 @@ async function deleteUploadDoc() {
       if (dashboard) dashboard.style.display = 'block';
       if (upload) upload.style.display = 'none';
     } else {
-      const { data } = await res.json();
-      setStatus(`Error ${res.status}: ${data.detail?.detail || data.detail || res.statusText}`, "error");
+      setStatus(`Error ${res.status}: ${data?.detail?.detail || data?.detail || res.statusText}`, "error");
     }
   } catch (err) {
     setStatus(`Network error — is the service on port 8800? (${err.message})`, "error");

@@ -1,0 +1,33 @@
+<aside class="right-sidebar" id="rightSidebar">
+
+  <!-- Top bar -->
+  <div class="rs-topbar">
+    <div class="rs-topbar-brand">
+      <span class="rs-topbar-dot" id="rsStatusDot"></span>
+      <span class="rs-topbar-label">Live Monitor</span>
+    </div>
+    <button class="rs-collapse-btn" onclick="toggleRightSidebar()" title="Hide panel" aria-label="Hide panel">&#x203A;</button>
+  </div>
+
+  <!-- Live Events pane -->
+  <div class="rs-pane rs-events-pane">
+    <div class="rs-pane-hd">
+      <span class="rs-pane-icon">📡</span>
+      <span class="rs-pane-title">Live Events</span>
+    </div>
+    <div id="wsPanelPartial" class="rs-events-body"></div>
+  </div>
+
+  <!-- Accent divider -->
+  <div class="rs-divider"></div>
+
+  <!-- Confidence legend pane -->
+  <div class="rs-pane rs-legend-pane">
+    <div class="rs-pane-hd">
+      <span class="rs-pane-icon">📊</span>
+      <span class="rs-pane-title">Confidence Scale</span>
+    </div>
+    <div id="confidenceLegendPartial" class="rs-legend-body"></div>
+  </div>
+
+</aside>

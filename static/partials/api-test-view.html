@@ -1,0 +1,78 @@
+<!-- API Test Runner View -->
+<div id="apiTestView" style="display:none">
+
+  <div class="page-greeting">
+    <div>
+      <h1 class="greeting-title">API Test Runner 🧪</h1>
+      <p class="greeting-sub">Run live API tests against the backend and watch WebSocket events in real time</p>
+    </div>
+  </div>
+
+  <div class="atr-layout">
+
+    <!-- ── Left column: controls + results ── -->
+    <div class="atr-left">
+
+      <!-- Test selector card -->
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-title">Test Suite</div>
+
+        <div class="atr-suite-grid">
+          <button class="atr-suite-btn active" data-suite="all"       onclick="atrSelectSuite('all')">All Tests</button>
+          <button class="atr-suite-btn"        data-suite="health"    onclick="atrSelectSuite('health')">Health</button>
+          <button class="atr-suite-btn"        data-suite="documents" onclick="atrSelectSuite('documents')">Documents</button>
+          <button class="atr-suite-btn"        data-suite="tables"    onclick="atrSelectSuite('tables')">Tables</button>
+          <button class="atr-suite-btn"        data-suite="news"      onclick="atrSelectSuite('news')">News</button>
+        </div>
+
+        <div class="atr-actions">
+          <button class="atr-run-btn" id="atrRunBtn" onclick="atrRun()">▶ Run Tests</button>
+          <button class="atr-clear-btn" onclick="atrClearResults()">Clear</button>
+        </div>
+
+        <!-- Progress bar (hidden until running) -->
+        <div class="atr-progress-wrap" id="atrProgressWrap" style="display:none">
+          <div class="atr-progress-bar" id="atrProgressBar" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Summary badges -->
+      <div class="atr-summary" id="atrSummary" style="display:none">
+        <span class="atr-stat atr-stat-pass">✅ <span id="atrPassCount">0</span> passed</span>
+        <span class="atr-stat atr-stat-fail">❌ <span id="atrFailCount">0</span> failed</span>
+        <span class="atr-stat atr-stat-skip">⏭ <span id="atrSkipCount">0</span> skipped</span>
+        <span class="atr-stat atr-stat-time">⏱ <span id="atrTotalTime">0</span> ms</span>
+      </div>
+
+      <!-- Results list -->
+      <div class="card">
+        <div class="card-title flex-between">
+          <span>Results</span>
+          <span class="count" id="atrResultCount">0 tests</span>
+        </div>
+        <div id="atrResultList">
+          <div class="atr-empty">Choose a suite and click Run Tests</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Right column: live WS events ── -->
+    <div class="atr-right">
+      <div class="card" style="height:100%">
+        <div class="card-title flex-between">
+          <span>Live WebSocket Events</span>
+          <div class="atr-ws-controls">
+            <span class="ws-dot" id="atrWsDot"></span>
+            <button class="atr-ws-btn" id="atrWsConnBtn" onclick="atrWsToggle()">Connect</button>
+            <button class="atr-ws-btn" onclick="atrWsClear()">Clear</button>
+          </div>
+        </div>
+        <div class="atr-ws-log" id="atrWsLog">
+          <div class="atr-ws-empty">Connect to watch server events during test runs</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

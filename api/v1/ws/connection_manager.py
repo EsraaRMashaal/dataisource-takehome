@@ -4,6 +4,7 @@ Module: app.api.v1.ws.connection_manager
 Responsibility:
     Tracks active WebSocket connections grouped by channel and provides
     broadcast fan-out.  Bridges the internal event bus to connected clients.
+    Persists every broadcasted event to the websocket_messages audit log.
 
     Channels:
         "documents"  — document processing progress & completion
@@ -21,8 +22,12 @@ Architecture fit:
     websocket.py endpoints call connect() / disconnect().
     server.py lifespan calls subscribe_to_event_bus() once at startup so
     that internal service events flow through to WS clients automatically.
+    Persistence uses AsyncSessionLocal directly (no request session) and
+    runs as a fire-and-forget asyncio task so DB latency never delays
+    the broadcast.
 """
 
+import asyncio
 import json
 from collections import defaultdict
 
@@ -63,9 +68,10 @@ class ConnectionManager:
 
     async def broadcast(self, event: dict, channel: str) -> None:
         """
-        Send *event* to every client subscribed to *channel*, and also to
-        every client on the aggregate "all" channel.  Dead connections are
-        pruned silently.
+        Send *event* to every client subscribed to *channel* and to every
+        client on the aggregate "all" channel.  Dead connections are pruned
+        silently.  Every broadcast is persisted to the websocket_messages
+        table as a fire-and-forget background task.
         """
         payload = json.dumps(event, default=str)
         targets = (
@@ -75,7 +81,12 @@ class ConnectionManager:
         dead: list[tuple[WebSocket, str]] = []
 
         for ws in targets:
-            ch = "all" if ws in self._channels.get("all", set()) and ws not in self._channels.get(channel, set()) else channel
+            ch = (
+                "all"
+                if ws in self._channels.get("all", set())
+                and ws not in self._channels.get(channel, set())
+                else channel
+            )
             try:
                 if ws.client_state == WebSocketState.CONNECTED:
                     await ws.send_text(payload)
@@ -84,6 +95,9 @@ class ConnectionManager:
 
         for ws, ch in dead:
             self.disconnect(ws, ch)
+
+        # Persist to audit log regardless of whether any clients were connected
+        asyncio.create_task(self._persist_message(event, channel, payload))
 
     # ------------------------------------------------------------------
     # Event bus wiring  (called once at startup)
@@ -94,7 +108,9 @@ class ConnectionManager:
         subscribe("documents", self._on_documents)
         subscribe("alerts",    self._on_alerts)
         subscribe("records",   self._on_records)
-        logger.info("ConnectionManager subscribed to event bus channels: documents, alerts, records")
+        logger.info(
+            "ConnectionManager subscribed to event bus channels: documents, alerts, records"
+        )
 
     async def _on_documents(self, event: dict) -> None:
         await self.broadcast(event, "documents")
@@ -117,6 +133,38 @@ class ConnectionManager:
             await ws.send_text(json.dumps(data))
         except Exception:
             pass
+
+    async def _persist_message(
+        self, event: dict, channel: str, payload: str
+    ) -> None:
+        """
+        Write one row to websocket_messages.  Runs as a background task
+        so failures here never affect broadcast delivery.
+        Uses its own short-lived session from AsyncSessionLocal.
+        """
+        from app.db.database import AsyncSessionLocal
+        from app.db.repositories.ws_message_repository import (
+            extract_correlation_id,
+            insert_message,
+        )
+
+        event_name     = event.get("event", "unknown")
+        correlation_id = extract_correlation_id(event)
+
+        try:
+            async with AsyncSessionLocal() as session:
+                await insert_message(
+                    session,
+                    channel_name=channel,
+                    event_name=event_name,
+                    message_json=payload,
+                    correlation_id=correlation_id,
+                )
+        except Exception as exc:
+            logger.error(
+                "Failed to persist WS message — channel=%s event=%s error=%r",
+                channel, event_name, exc,
+            )
 
 
 # Module-level singleton imported by endpoints and server.py

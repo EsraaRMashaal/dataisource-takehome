@@ -18,7 +18,7 @@ window._newsNewIds    = window._newsNewIds    || new Set();
 
 async function loadNewsAlerts() {
   try {
-    const data = await apiNewsAlerts();
+    const { data } = await apiNewsAlerts();
     window._newsAlerts = data.alerts || [];
     renderNewsStats(window._newsAlerts);
     renderNewsList(window._newsAlerts);
@@ -117,7 +117,7 @@ async function openNewsDetail(alertId) {
   panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
   try {
-    const alert = await apiNewsGetAlert(alertId);
+    const { data: alert } = await apiNewsGetAlert(alertId);
     _renderDetail(panel, alert);
   } catch (err) {
     panel.innerHTML = `<div class="empty-state">Failed to load alert detail.</div>`;
@@ -214,7 +214,7 @@ async function clearNewsAlerts() {
   if (!confirmed) return;
 
   try {
-    const res = await apiNewsDeleteAlerts();
+    const { res } = await apiNewsDeleteAlerts();
     if (res.ok || res.status === 204) {
       window._newsAlerts = [];
       window._newsSelectedId = null;

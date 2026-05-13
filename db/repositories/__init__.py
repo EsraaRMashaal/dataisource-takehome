@@ -18,8 +18,8 @@ Architecture fit:
     argument injected by the caller, enabling transaction control
     at the service level rather than inside the repository.
 
-    Planned repository modules:
-        document_repository.py  — document records, keywords, entities
-        alert_repository.py     — alert events, deduplication checks
-        poll_repository.py      — polling run records and status
+    Repository modules:
+        document_repository.py  — document records, keywords, entities, aggregate counts
+        alert_repository.py     — alert events, status updates, bulk delete
+        poll_repository.py      — poll run records, status updates
 """

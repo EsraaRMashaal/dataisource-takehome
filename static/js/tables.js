@@ -15,7 +15,7 @@ window._tablesState = {
 
 async function loadTablesList() {
   try {
-    const data = await apiListTables();
+    const { data } = await apiListTables();
     window._tablesState.tables = data.tables || [];
     renderTablesStats();
     renderTablesTabs();
@@ -39,7 +39,7 @@ async function loadTableRows(tableName, page) {
   if (wrap) wrap.innerHTML = `<div class="empty-state" style="padding:2rem;">Loading…</div>`;
 
   try {
-    const data = await apiGetTableRows(tableName, page, window._tablesState.pageSize);
+    const { data } = await apiGetTableRows(tableName, page, window._tablesState.pageSize);
     window._tablesState.columns = data.columns || [];
     window._tablesState.rows    = data.rows    || [];
     window._tablesState.total   = data.total   || 0;
@@ -104,7 +104,7 @@ function renderTablesGrid() {
   const thead = s.columns.map(c => `<th title="${_esc(c)}">${_esc(c)}</th>`).join("")
     + `<th class="tables-th-action"></th>`;
 
-  const tbody = s.rows.map(row => {
+  const tbody = s.rows.map((row, rowIdx) => {
     const rowId = row["id"];
     const safeId = JSON.stringify(String(rowId));
     const safeTable = JSON.stringify(s.active);
@@ -119,9 +119,9 @@ function renderTablesGrid() {
     }).join("");
     const delBtn = `<td class="tables-td-action">
       <button class="tables-row-del-btn" title="Delete row"
-        onclick='deleteTableRow(${safeTable}, ${safeId})'>✕</button>
+        onclick='event.stopPropagation();deleteTableRow(${safeTable}, ${safeId})'>✕</button>
     </td>`;
-    return `<tr>${cells}${delBtn}</tr>`;
+    return `<tr class="tables-data-row" onclick="showRowDetail(${rowIdx})">${cells}${delBtn}</tr>`;
   }).join("");
 
   wrap.innerHTML = `
@@ -179,7 +179,7 @@ async function deleteTableRow(tableName, rowId) {
   if (!confirmed) return;
 
   try {
-    const res = await apiDeleteTableRow(tableName, rowId);
+    const { res } = await apiDeleteTableRow(tableName, rowId);
     if (res.ok || res.status === 204) {
       setStatus("Row deleted.", "success");
       await loadTableRows(tableName, window._tablesState.page);
@@ -197,7 +197,7 @@ async function clearTable(tableName) {
   if (!confirmed) return;
 
   try {
-    const res = await apiClearTable(tableName);
+    const { res } = await apiClearTable(tableName);
     if (res.ok || res.status === 204) {
       setStatus(`Table "${tableName}" cleared.`, "success");
       window._tablesState.rows  = [];
@@ -216,7 +216,7 @@ async function clearTable(tableName) {
 
 async function _refreshTabCount(tableName) {
   try {
-    const data = await apiListTables();
+    const { data } = await apiListTables();
     window._tablesState.tables = data.tables || [];
     renderTablesStats();
     renderTablesTabs();
@@ -227,9 +227,69 @@ async function _refreshTabCounts() {
   return _refreshTabCount(null);
 }
 
+/* ═══════════════════════════════════════════════
+   ROW DETAIL MODAL
+═══════════════════════════════════════════════ */
+
+function showRowDetail(rowIdx) {
+  const s      = window._tablesState;
+  const row    = s.rows[rowIdx];
+  const table  = s.active || "row";
+  if (!row) return;
+
+  const fields = s.columns.map(col => {
+    const raw = row[col];
+    const isNull = raw === null || raw === undefined;
+    const str    = isNull ? null : String(raw);
+    const isLong = str && str.length > 120;
+    return `
+      <div class="trd-field">
+        <div class="trd-key">${_esc(col)}</div>
+        <div class="trd-val${isNull ? " trd-null" : ""}${isLong ? " trd-long" : ""}">
+          ${isNull ? "NULL" : _esc(str)}
+        </div>
+      </div>`;
+  }).join("");
+
+  const rowId  = row["id"] != null ? ` · ID ${_esc(String(row["id"]))}` : "";
+  const title  = `${table.replace(/_/g, " ")}${rowId}`;
+
+  const existing = document.getElementById("trdOverlay");
+  if (existing) existing.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id        = "trdOverlay";
+  overlay.className = "trd-overlay";
+  overlay.innerHTML = `
+    <div class="trd-modal" role="dialog" aria-modal="true">
+      <div class="trd-header">
+        <span class="trd-title">${_esc(title)}</span>
+        <button class="trd-close" onclick="closeRowDetail()" aria-label="Close">✕</button>
+      </div>
+      <div class="trd-body">${fields}</div>
+    </div>`;
+
+  overlay.addEventListener("click", e => { if (e.target === overlay) closeRowDetail(); });
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add("trd-visible"));
+}
+
+function closeRowDetail() {
+  const overlay = document.getElementById("trdOverlay");
+  if (!overlay) return;
+  overlay.classList.remove("trd-visible");
+  overlay.addEventListener("transitionend", () => overlay.remove(), { once: true });
+}
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeRowDetail();
+});
+
 /* ── Exports ── */
 window.loadTablesList   = loadTablesList;
 window.loadTableRows    = loadTableRows;
 window.tablesChangePage = tablesChangePage;
 window.deleteTableRow   = deleteTableRow;
 window.clearTable       = clearTable;
+window.showRowDetail    = showRowDetail;
+window.closeRowDetail   = closeRowDetail;

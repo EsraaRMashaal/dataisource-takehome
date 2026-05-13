@@ -1,9 +1,8 @@
 """
 Module: app.services.document_service
 
-Responsibility:
-    Business logic for document ingestion, retrieval, and deletion.
-    Owns validation, hashing, extraction orchestration, and persistence.
+Business logic for document ingestion, retrieval, and deletion.
+Owns validation, hashing, extraction orchestration, and persistence.
 
 Why it exists:
     Keeps route handlers thin — they parse input and format output only.
@@ -11,7 +10,7 @@ Why it exists:
 
 Architecture fit:
     Called by documents.py endpoints.
-    Calls ai_analyzer for extraction and document_repository for persistence.
+    Calls extraction_service for NLP extraction and document_repository for persistence.
     Raises HTTPException directly — acceptable for FastAPI service layers.
 """
 
@@ -25,8 +24,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import app.db.repositories.document_repository as doc_repo
 from app.db.sqlite.base import Document, ExtractedEntity, ExtractedKeyword
 from app.logger import get_logger
-from app.services.ai_analyzer import analyze
 from app.services import event_bus
+from app.services.extraction_service import analyze
 
 logger = get_logger(__name__)
 
@@ -38,8 +37,9 @@ _ALLOWED_MIME     = {
     "application/octet-stream",   # browsers may send this for plain .txt
 }
 
+
 # ---------------------------------------------------------------------------
-# Internal helpers
+# Validation helpers
 # ---------------------------------------------------------------------------
 
 def _require_document(document: Document | None, doc_id: str) -> Document:
@@ -63,7 +63,6 @@ def _validate_filename(filename: str) -> None:
             detail={"code": "INVALID_FILENAME",
                     "detail": f"Filename exceeds {_MAX_FILENAME_LEN} characters"},
         )
-    # Block path traversal and reserved separators
     if any(c in filename for c in ("/", "\\", ":")) or ".." in filename:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -73,7 +72,7 @@ def _validate_filename(filename: str) -> None:
 
 def _validate_mime(content_type: str | None) -> None:
     if content_type is None:
-        return  # missing header is allowed
+        return
     mime = content_type.split(";")[0].strip().lower()
     if not (mime.startswith("text/") or mime in _ALLOWED_MIME):
         raise HTTPException(
@@ -116,6 +115,7 @@ def _check_duplicate(existing: Document | None) -> None:
             detail={"code": "DUPLICATE_DOCUMENT",
                     "detail": f"Already ingested as id={existing.id}"},
         )
+
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -177,8 +177,8 @@ async def ingest(
             "event": "document.progress", "doc_id": doc_id,
             "stage": "indexing", "pct": 70,
             "doc_type": result.document_type,
-            "keywords": len(result.keywords),
-            "entities": len(result.entities),
+            "keywords": result.keyword_count,
+            "entities": result.entity_count,
         })
 
         document.document_type     = result.document_type
@@ -223,15 +223,17 @@ async def ingest(
         await db.commit()
         await db.refresh(document)
 
-        logger.info("Ingested: id=%s  type=%s  kw=%d  entities=%d",
-                    doc_id, result.document_type, len(result.keywords), len(result.entities))
+        logger.info(
+            "Ingested: id=%s  type=%s  kw=%d  entities=%d",
+            doc_id, result.document_type, result.keyword_count, result.entity_count,
+        )
 
         await event_bus.publish("documents", {
             "event": "document.completed",
             "doc_id": doc_id,
             "doc_type": result.document_type,
-            "keywords": len(result.keywords),
-            "entities": len(result.entities),
+            "keywords": result.keyword_count,
+            "entities": result.entity_count,
         })
         await event_bus.publish("records", {
             "event": "record.created",
@@ -285,3 +287,20 @@ async def get_keywords(doc_id: str, db: AsyncSession) -> list[ExtractedKeyword]:
 async def get_entities(doc_id: str, db: AsyncSession) -> list[ExtractedEntity]:
     await get_by_id(doc_id, db)
     return await doc_repo.get_entities_by_doc(db, doc_id)
+
+
+async def get_stats(db: AsyncSession) -> dict:
+    """Return aggregate counts across all document records."""
+    by_status = await doc_repo.count_documents_by_status(db)
+    kw_count  = await doc_repo.count_keywords(db)
+    ent_count = await doc_repo.count_entities(db)
+
+    total = sum(by_status.values())
+    return {
+        "total":           total,
+        "processed":       by_status.get("processed", 0),
+        "pending":         by_status.get("pending", 0),
+        "failed":          by_status.get("failed", 0),
+        "total_keywords":  kw_count,
+        "total_entities":  ent_count,
+    }

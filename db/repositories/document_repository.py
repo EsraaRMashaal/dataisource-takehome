@@ -13,7 +13,7 @@ Architecture fit:
     transaction boundaries (commit / rollback) are owned by the endpoint.
 """
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.sqlite.base import Document, ExtractedEntity, ExtractedKeyword
@@ -90,3 +90,22 @@ async def get_entities_by_doc(
         .order_by(ExtractedEntity.entity_type)
     )
     return list(result.scalars().all())
+
+
+async def count_documents_by_status(session: AsyncSession) -> dict[str, int]:
+    """Return a mapping of processing_status → row count."""
+    rows = await session.execute(
+        select(Document.processing_status, func.count())
+        .group_by(Document.processing_status)
+    )
+    return {status: count for status, count in rows.all()}
+
+
+async def count_keywords(session: AsyncSession) -> int:
+    result = await session.execute(select(func.count()).select_from(ExtractedKeyword))
+    return result.scalar_one()
+
+
+async def count_entities(session: AsyncSession) -> int:
+    result = await session.execute(select(func.count()).select_from(ExtractedEntity))
+    return result.scalar_one()

@@ -1,27 +1,16 @@
 """
 Module: app.services.gdelt_service
 
-Responsibility:
-    Handles outbound communication with the GDELT API.
+HTTP client for the GDELT Document 2.0 API.
 
-    This module:
-        - builds monitoring queries
-        - fetches upstream news items
-        - returns normalized dict payloads
-        - deduplicates articles across topics
+Responsibilities:
+    - Build monitoring queries from the configured topic list
+    - Fetch and normalize article payloads
+    - Deduplicate results by URL across topics
+    - Retry on transient network errors and 429 rate-limits
+    - Provide an is_healthy() probe for health-check endpoints
 
-    Strategy:
-        - Poll every configured topic per run
-        - Deduplicate results by URL so the same article cannot
-          appear twice even if matched by multiple topics
-        - Inter-topic delay + jitter reduces burst pressure on GDELT
-        - Per-topic retry with separate backoff curves for 429 vs
-          transient network errors; honours Retry-After when present
-        - Topics are shuffled on each run to distribute load evenly
-          across the list over time instead of always hammering the
-          same terms first
-
-    No persistence or websocket logic lives here.
+No persistence, no WebSocket, and no alert logic live here.
 """
 
 import asyncio
@@ -33,6 +22,10 @@ from typing import Any
 import httpx
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
 
 MONITOR_TOPICS: list[str] = [
     "shipping delays",
@@ -51,50 +44,53 @@ GDELT_API_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
 
 REQUEST_TIMEOUT = httpx.Timeout(connect=10.0, read=15.0, write=8.0, pool=8.0)
 
-# Per-topic retry budget (applies to both 429 and network errors)
+# Per-topic retry budget
 MAX_RETRIES = 3
 
-# Backoff base for transient network errors:  1 s → 2 s → 4 s
+# Exponential backoff base for transient network errors:  1 s → 2 s → 4 s
 RETRY_BASE_SECS = 1.0
 
-# Backoff base for 429 responses (longer, since the server is overloaded):
-# 3 s → 6 s → 12 s
+# Exponential backoff base for 429 responses (longer):  3 s → 6 s → 12 s
 RATE_LIMIT_BASE_SECS = 3.0
 
-# How many topics to pick per poll run.
-# Topics are chosen randomly each run, so the full list is covered over time.
+# How many topics to sample per poll run
 TOPICS_PER_POLL = 3
 
-# Maximum number of topics fetched concurrently (must be ≤ TOPICS_PER_POLL).
+# Maximum concurrent topic fetches (must be ≤ TOPICS_PER_POLL)
 CONCURRENCY = 3
 
-# Stagger between requests within the same concurrent batch (seconds).
-# Prevents all CONCURRENCY slots from hitting GDELT at the exact same millisecond.
+# Stagger within a batch to avoid hitting GDELT at the exact same millisecond
 SLOT_STAGGER_SECS = 0.4
 
 
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
 async def poll(max_records: int = 3) -> list[dict[str, Any]]:
     """
-    Poll GDELT for all configured monitoring topics concurrently.
+    Poll GDELT for a random sample of configured monitoring topics.
 
-    Up to CONCURRENCY topics are fetched at the same time.  Within each
-    concurrent batch, requests are staggered by SLOT_STAGGER_SECS to
-    avoid hitting GDELT at the exact same millisecond.  Results are
-    deduplicated by URL across topics.
+    Up to CONCURRENCY topics are fetched concurrently, staggered by
+    SLOT_STAGGER_SECS.  Results are deduplicated by URL.  The first topic
+    that returns articles sets a done_event that allows queued tasks to
+    skip early (short-circuit optimisation).
 
     Returns:
         Flat list of normalized article payloads, deduplicated by URL.
 
     Raises:
-        RuntimeError: If every topic failed and no articles were collected.
+        RuntimeError: if every sampled topic failed and no articles were collected.
     """
     errors: list[str] = []
-    topics = random.sample(MONITOR_TOPICS, k=TOPICS_PER_POLL)
+    topics = random.sample(MONITOR_TOPICS, k=min(TOPICS_PER_POLL, len(MONITOR_TOPICS)))
     sem = asyncio.Semaphore(CONCURRENCY)
-    done_event = asyncio.Event()  # set by the first topic that returns articles
+    done_event = asyncio.Event()
 
-    logger.info("Poll starting topics=%d/%d selected=%s",
-                TOPICS_PER_POLL, len(MONITOR_TOPICS), topics)
+    logger.info(
+        "Poll starting — topics=%d/%d selected=%s",
+        len(topics), len(MONITOR_TOPICS), topics,
+    )
 
     async with httpx.AsyncClient(
         timeout=REQUEST_TIMEOUT,
@@ -104,11 +100,9 @@ async def poll(max_records: int = 3) -> list[dict[str, Any]]:
     ) as client:
 
         async def _bounded(index: int, topic: str) -> tuple[str, list[dict[str, Any]]]:
-            # Skip queued tasks once any topic has already produced results
             if done_event.is_set():
                 return topic, []
             async with sem:
-                # Re-check after acquiring the semaphore slot
                 if done_event.is_set():
                     return topic, []
                 await asyncio.sleep((index % CONCURRENCY) * SLOT_STAGGER_SECS)
@@ -148,14 +142,52 @@ async def poll(max_records: int = 3) -> list[dict[str, Any]]:
                 new, topic, len(results),
             )
 
-    logger.info("Completed GDELT polling total_articles=%d", len(results))
+    logger.info("GDELT polling complete — total_articles=%d", len(results))
 
     if not results and errors:
-        raise RuntimeError(
-            "All GDELT polling attempts failed: " + " | ".join(errors)
-        )
+        raise RuntimeError("All GDELT polling attempts failed: " + " | ".join(errors))
 
     return results
+
+
+async def fetch_single_topic(
+    topic: str,
+    max_records: int = 5,
+) -> list[dict[str, Any]]:
+    """
+    Fetch articles for a single topic and return normalized results.
+    Useful for targeted searches and testing individual queries.
+    """
+    errors: list[str] = []
+    async with httpx.AsyncClient(
+        timeout=REQUEST_TIMEOUT,
+        verify=True,
+        http2=False,
+        headers={"User-Agent": "DataISourceMonitor/1.0"},
+    ) as client:
+        articles = await _fetch_topic(client, topic, max_records, errors)
+
+    if errors:
+        logger.warning("fetch_single_topic errors: %s", errors)
+
+    return [_normalize(a, topic) for a in articles]
+
+
+async def is_healthy() -> bool:
+    """
+    Probe GDELT reachability with a minimal request.
+    Returns True if the API responds with a 2xx or 4xx (server is up),
+    False on connection/timeout errors.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(5.0), http2=False) as client:
+            response = await client.get(
+                GDELT_API_URL,
+                params={"query": "test", "maxrecords": 1, "mode": "artlist", "format": "json"},
+            )
+            return response.status_code < 500
+    except (httpx.ConnectError, httpx.TimeoutException):
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -169,10 +201,8 @@ async def _fetch_topic(
     errors: list[str],
 ) -> list[dict[str, Any]]:
     """
-    Fetch articles for a single *topic* with retry logic.
-
-    Returns the list of raw article dicts (may be empty).
-    Appends a human-readable message to *errors* on failure.
+    Fetch articles for *topic* with retry logic.
+    Returns article list (may be empty). Appends to *errors* on failure.
     """
     params = {
         "query": f'"{topic}" sourcelang:English',
@@ -183,11 +213,9 @@ async def _fetch_topic(
     }
 
     logger.info("Polling GDELT topic='%s'", topic)
-
     last_exc: Exception | None = None
 
     for attempt in range(MAX_RETRIES):
-
         try:
             response = await client.get(GDELT_API_URL, params=params)
 
@@ -221,19 +249,18 @@ async def _fetch_topic(
             errors.append(f"HTTP {exc.response.status_code} for topic='{topic}'")
             return []
 
-        # Successful response — parse it
         content_type = response.headers.get("content-type", "")
         if "application/json" not in content_type:
-            logger.warning("Non-JSON response topic='%s' content_type='%s'", topic, content_type)
+            logger.warning(
+                "Non-JSON response topic='%s' content_type='%s'", topic, content_type
+            )
             return []
 
         payload = response.json()
         articles = payload.get("articles") or []
-
         logger.info("GDELT returned %d article(s) topic='%s'", len(articles), topic)
         return articles
 
-    # Exhausted retries
     msg = f"Exhausted retries for topic='{topic}'"
     errors.append(msg)
     if last_exc:
@@ -244,10 +271,7 @@ async def _fetch_topic(
 
 
 def _rate_limit_wait(response: httpx.Response, attempt: int) -> float:
-    """
-    Return how long to wait after a 429 response.
-    Prefers the Retry-After header; falls back to exponential backoff.
-    """
+    """Return wait seconds after a 429, preferring Retry-After over backoff."""
     retry_after = response.headers.get("Retry-After")
     if retry_after:
         try:
@@ -260,20 +284,20 @@ def _rate_limit_wait(response: httpx.Response, attempt: int) -> float:
 def _normalize(article: dict[str, Any], topic: str) -> dict[str, Any]:
     """Convert a raw GDELT article dict into the shape expected by alert_service."""
     return {
-        "source_name": "gdelt",
+        "source_name":    "gdelt",
         "source_item_id": article.get("url"),
-        "title": article.get("title"),
-        "url": article.get("url"),
-        "published_at": _parse_gdelt_datetime(article.get("seendate")),
-        "query": topic,
-        "matched_terms": [topic],
-        "raw_payload": article,
+        "title":          article.get("title") or "Untitled",
+        "url":            article.get("url", ""),
+        "published_at":   _parse_gdelt_datetime(article.get("seendate")),
+        "query":          topic,
+        "matched_terms":  [topic],
+        "raw_payload":    article,
     }
 
 
 def _parse_gdelt_datetime(value: str | None) -> datetime | None:
     """
-    Convert a GDELT seendate string to a Python datetime.
+    Convert a GDELT seendate string to a UTC datetime.
 
     Example input: ``20260513T011200Z``
     """

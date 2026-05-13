@@ -118,29 +118,31 @@ window.wsDisconnect = wsDisconnect;
 
 /* ── Event rendering ── */
 
-function wsAddEvent(data) {
-  const box = document.getElementById("wsEvents");
-  if (!box) return;
-  box.querySelector(".ws-empty")?.remove();
-
-  const now     = new Date().toLocaleTimeString("en-GB", { hour12: false });
-  const evt     = data.event || "unknown";
-  const cls     = evt.replace(/\./g, "-");
-  const payload = Object.entries(data)
-    .filter(([k]) => k !== "event")
-    .map(([k, v]) => `${k}=${typeof v === "string" && v.length > 20 ? v.slice(0, 18) + "…" : v}`)
-    .join("  ");
-
+function wsCreateRow(typeClass, typeLabel, payloadHtml) {
+  const now = new Date().toLocaleTimeString("en-GB", { hour12: false });
   const row = document.createElement("div");
   row.className = "ws-event";
   row.innerHTML = `
     <div class="ws-event-head">
       <span class="ws-ts">${now}</span>
-      <span class="ws-type ${cls}">${evt}</span>
+      <span class="ws-type ${typeClass}">${typeLabel}</span>
     </div>
-    <div class="ws-payload">${payload || "—"}</div>`;
+    <div class="ws-payload">${payloadHtml}</div>`;
+  return row;
+}
 
-  box.appendChild(row);
+function wsAddEvent(data) {
+  const box = document.getElementById("wsEvents");
+  if (!box) return;
+  box.querySelector(".ws-empty")?.remove();
+
+  const evt     = data.event || "unknown";
+  const payload = Object.entries(data)
+    .filter(([k]) => k !== "event")
+    .map(([k, v]) => `${k}=${typeof v === "string" && v.length > 20 ? v.slice(0, 18) + "…" : v}`)
+    .join("  ");
+
+  box.appendChild(wsCreateRow(evt.replace(/\./g, "-"), evt, payload || "—"));
   box.scrollTop = box.scrollHeight; /* newest at bottom */
   while (box.children.length > 150) box.firstChild.remove();
 }
@@ -149,15 +151,7 @@ function wsAddSystem(msg) {
   const box = document.getElementById("wsEvents");
   if (!box) return;
   box.querySelector(".ws-empty")?.remove();
-  const row = document.createElement("div");
-  row.className = "ws-event";
-  row.innerHTML = `
-    <div class="ws-event-head">
-      <span class="ws-ts">${new Date().toLocaleTimeString("en-GB", { hour12: false })}</span>
-      <span class="ws-type ws-opened">system</span>
-    </div>
-    <div class="ws-payload">${msg}</div>`;
-  box.appendChild(row);
+  box.appendChild(wsCreateRow("ws-opened", "system", msg));
   box.scrollTop = box.scrollHeight;
 }
 

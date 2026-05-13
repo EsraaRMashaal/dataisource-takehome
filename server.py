@@ -32,6 +32,7 @@ from app.ui import router as ui_router
 from app.db.database import Base, engine
 from app.logger import configure_logging, get_logger
 from app.settings import settings
+from app.workers import scheduler
 # Import models so SQLAlchemy registers them on Base.metadata before create_all
 import app.db.sqlite.base  # noqa: F401
 
@@ -58,13 +59,13 @@ async def lifespan(app: FastAPI):
 
     ws_manager.subscribe_to_event_bus()
 
-    # TODO: start background polling scheduler (app.workers.scheduler)
+    scheduler.start()
 
     logger.info("Application ready — env=%s", settings.app_env)
     yield
 
     # ── Shutdown ─────────────────────────────────────────────────────────
-    # TODO: stop background polling scheduler
+    await scheduler.stop()
 
     await engine.dispose()
     logger.info("Database engine disposed — shutdown complete")

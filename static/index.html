@@ -51,11 +51,11 @@
         <span class="nav-item-icon">🗄️</span>
         <span class="nav-item-label">DB Explorer</span>
       </button>
+      <button class="sidebar-nav-item" id="navBtnApiTest" onclick="showApiTestView()">
+        <span class="nav-item-icon">🧪</span>
+        <span class="nav-item-label">API Tests</span>
+      </button>
     </nav>
-
-    <div class="sidebar-section-label">Live Events</div>
-    <!-- WS Panel loads here -->
-    <div id="wsPanelPartial" class="sidebar-ws-wrap"></div>
 
     <div class="sidebar-footer">v1.0.0 · DataISource</div>
   </aside>
@@ -63,15 +63,8 @@
   <!-- Mobile overlay -->
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
-  <!-- ─── Right Sidebar — Confidence Legend ─── -->
-  <aside class="right-sidebar" id="rightSidebar">
-    <div class="right-sidebar-header">
-      <span class="right-sidebar-title">📊 Confidence Legend</span>
-    </div>
-    <div class="right-sidebar-body">
-      <div id="confidenceLegendPartial"></div>
-    </div>
-  </aside>
+  <!-- ─── Right Sidebar — loaded from partial ─── -->
+  <div id="rightSidebarPartial"></div>
 
   <!-- ─── Main Area ─── -->
   <div class="main-area">
@@ -84,6 +77,10 @@
       </div>
       <div class="top-bar-title" id="topBarTitle">Dashboard</div>
       <div class="top-bar-actions">
+        <button class="notif-bell-btn" id="notifBellBtn" onclick="showNewsView(); clearNotifBadge();" title="News alerts">
+          🔔
+          <span class="notif-badge" id="notifBadge" hidden>0</span>
+        </button>
         <span class="ws-status-badge">
           <span class="ws-nav-dot" id="wsNavDot"></span>
           <span class="ws-badge-text" id="wsNavText">Disconnected</span>
@@ -99,6 +96,7 @@
         <div id="wsTestViewPartial"></div>
         <div id="newsViewPartial"></div>
         <div id="tablesViewPartial"></div>
+        <div id="apiTestViewPartial"></div>
       </div>
     </main>
 
@@ -108,19 +106,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js"></script>
 
-  <!-- App Scripts (correct load order) -->
-  <script src="js/toast.js"></script>
-  <script src="js/constants.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/utils.js"></script>
-  <script src="js/renderers.js"></script>
-  <script src="js/view-switcher.js"></script>
-  <script src="js/ws-panel.js"></script>
-  <script src="js/ws-test.js"></script>
-  <script src="js/upload.js"></script>
-  <script src="js/home.js"></script>
-  <script src="js/news.js"></script>
-  <script src="js/tables.js"></script>
-  <script src="js/main.js"></script>
+  <!-- App Scripts -->
+  <script src="js/index.js"></script>
+  <script type="module" src="js/api/index.js"></script>
 </body>
 </html>

@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.models.response_models import AlertListResponse, AlertResponse
 from app.db.database import get_db
-from app.services import alert_service
+from app.services import alert_service, poll_service
 
 router = APIRouter(tags=["news"])
 
@@ -32,7 +32,7 @@ router = APIRouter(tags=["news"])
 )
 async def poll_news(db: AsyncSession = Depends(get_db)) -> AlertListResponse:
     try:
-        alerts = await alert_service.run_poll(db)
+        alerts = await poll_service.run_poll(db)
     except Exception as exc:
         raise HTTPException(status_code=500, detail="Monitoring poll failed") from exc
     return _alert_list_response(alerts)

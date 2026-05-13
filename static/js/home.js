@@ -22,7 +22,7 @@ window._selectedId = window._selectedId || null;
 
 async function loadDocuments() {
   try {
-    const data = await apiListDocuments();
+    const { data } = await apiListDocuments();
     // Debug log to inspect the response
     console.log("apiListDocuments response:", data);
     _docs = (data && data.documents) ? data.documents : [];
@@ -99,7 +99,7 @@ async function openDetail(docId) {
 
   setStatus("Loading document detail…", "info");
   try {
-    const [kw, en] = await Promise.all([apiGetKeywords(docId), apiGetEntities(docId)]);
+    const [{ data: kw }, { data: en }] = await Promise.all([apiGetKeywords(docId), apiGetEntities(docId)]);
     renderDoc(doc, "dashboard");
     renderHeader(en.entities, "dashboard");
     renderQuantities(en.entities, "dashboard");
@@ -137,7 +137,7 @@ async function deleteDoc(docId) {
   if (!confirmed) return;
 
   try {
-    const res = await apiDeleteDocument(docId);
+    const { res, data } = await apiDeleteDocument(docId);
     if (res.status === 204) {
       _docs = _docs.filter(d => d.id !== docId);
       renderStats(_docs);
@@ -145,8 +145,7 @@ async function deleteDoc(docId) {
       if (_selectedId === docId) closeDetail();
       setStatus("Document deleted.", "success");
     } else {
-      const data = await res.json().catch(() => ({}));
-      setStatus(`Delete failed: ${data.detail?.detail || res.statusText}`, "error");
+      setStatus(`Delete failed: ${data?.detail?.detail || res.statusText}`, "error");
     }
   } catch (err) {
     setStatus(`Network error: ${err.message}`, "error");
