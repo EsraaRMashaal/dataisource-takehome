@@ -1,0 +1,64 @@
+<!-- Dashboard View Partial -->
+<div id="dashboardView">
+
+  <!-- Greeting header -->
+  <div class="page-greeting">
+    <div>
+      <h1 class="greeting-title">Supplier Dashboard 👋</h1>
+      <p class="greeting-sub">Overview of all factory quotation documents and extracted data</p>
+    </div>
+    <button class="btn-primary-action" onclick="showUploadView()">
+      📤 Upload Document
+    </button>
+  </div>
+
+  <!-- Stats Row (gradient cards) -->
+  <div class="stats-row">
+    <div class="stat-card stat-card-total">
+      <div class="stat-icon-row">
+        <span class="stat-icon">📁</span>
+      </div>
+      <div class="stat-value" id="statTotal-dashboard">—</div>
+      <div class="stat-label">Total Documents</div>
+    </div>
+    <div class="stat-card stat-card-processed">
+      <div class="stat-icon-row">
+        <span class="stat-icon">✅</span>
+      </div>
+      <div class="stat-value" id="statProcessed-dashboard">—</div>
+      <div class="stat-label">Processed</div>
+    </div>
+    <div class="stat-card stat-card-pending">
+      <div class="stat-icon-row">
+        <span class="stat-icon">⏳</span>
+      </div>
+      <div class="stat-value" id="statPending-dashboard">—</div>
+      <div class="stat-label">Pending / Failed</div>
+    </div>
+  </div>
+
+  <!-- Documents Card -->
+  <div class="card">
+    <div class="card-title flex-between">
+      <span>Documents</span>
+      <span class="count" id="docCount-dashboard"></span>
+    </div>
+    <div id="docTableWrap-dashboard"></div>
+  </div>
+
+  <!-- Detail Panel (hidden until a doc is selected) -->
+  <div class="card" id="detailPanel-dashboard" style="display:none">
+    <div class="card-title flex-between">
+      <span id="detailFilename-dashboard" class="text-mono text-sm"></span>
+      <button class="detail-close" onclick="closeDetail()">✕ Close</button>
+    </div>
+    <div class="detail-section-title">Document Record</div>
+    <div class="meta-grid" id="docMeta-dashboard"></div>
+    <div id="entityCards-dashboard"></div>
+    <div class="detail-section-title">
+      Keywords <span class="count" id="kwCount-dashboard"></span>
+    </div>
+    <div class="kw-cloud" id="kwCloud-dashboard"></div>
+  </div>
+
+</div>

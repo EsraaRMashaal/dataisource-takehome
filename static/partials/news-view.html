@@ -1,0 +1,60 @@
+<!-- News Monitoring View Partial -->
+<div id="newsView" style="display:none">
+
+  <!-- Page header -->
+  <div class="page-greeting">
+    <div>
+      <h1 class="greeting-title">News Monitor 📡</h1>
+      <p class="greeting-sub">GDELT-powered supply chain signal detection — poll for breaking news and review generated alerts</p>
+    </div>
+    <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;">
+      <button class="btn-primary-action" id="btnRunPoll" onclick="runNewsPoll()">
+        ▶ Run Poll
+      </button>
+      <button class="btn-outline-action" id="btnRefreshAlerts" onclick="loadNewsAlerts()">
+        ↻ Refresh
+      </button>
+      <button class="btn-danger" id="btnClearAlerts" onclick="clearNewsAlerts()">
+        🗑 Clear All
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="stats-row">
+    <div class="stat-card stat-card-total">
+      <div class="stat-icon-row"><span class="stat-icon">🔔</span></div>
+      <div class="stat-value" id="newsStatTotal">—</div>
+      <div class="stat-label">Total Alerts</div>
+    </div>
+    <div class="stat-card stat-card-processed">
+      <div class="stat-icon-row"><span class="stat-icon">✅</span></div>
+      <div class="stat-value" id="newsStatDetected">—</div>
+      <div class="stat-label">Detected</div>
+    </div>
+    <div class="stat-card stat-card-pending">
+      <div class="stat-icon-row"><span class="stat-icon">🌐</span></div>
+      <div class="stat-value" id="newsStatSources">—</div>
+      <div class="stat-label">Unique Sources</div>
+    </div>
+  </div>
+
+  <!-- Alert list card -->
+  <div class="card">
+    <div class="card-title flex-between">
+      <span>Alert Events</span>
+      <span class="count" id="newsAlertCount"></span>
+    </div>
+    <div id="newsListWrap">
+      <div class="empty-state">
+        <div class="empty-icon">📡</div>
+        No alerts yet — click <strong>Run Poll</strong> to fetch the latest news.
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail panel (hidden until an alert is selected) -->
+  <div class="card" id="newsDetailPanel" style="display:none;border-top:3px solid #4f46e5;">
+  </div>
+
+</div>

@@ -1,0 +1,50 @@
+<!-- Upload View Partial -->
+<div id="uploadView" style="display:none">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-header-info">
+      <h2 class="page-title">Upload Document</h2>
+      <p class="page-subtitle">Extract structured entities, quantities, and pricing data from quotation files</p>
+    </div>
+    <button class="btn-outline-action" onclick="showDashboardView()">
+      ← Back to Dashboard
+    </button>
+  </div>
+
+  <!-- Upload Card -->
+  <div class="card">
+    <div class="card-title">Select File</div>
+    <div class="drop-zone" id="dropZone-upload"
+      onclick="document.getElementById('fileInput-upload').click()">
+      <div class="icon">📄</div>
+      <p>Click to select a file, or drag &amp; drop here</p>
+      <p class="text-sm text-hint mt-xs">Supports .txt · .md · .csv &nbsp;·&nbsp; UTF-8 encoding &nbsp;·&nbsp; max 10 MB</p>
+      <div class="fname" id="fileLabel-upload"></div>
+      <input type="file" id="fileInput-upload" accept=".txt,.md,.csv" />
+    </div>
+    <button class="btn" id="uploadBtn-upload" disabled onclick="run()">
+      Upload &amp; Extract
+    </button>
+  </div>
+
+  <!-- Results -->
+  <div id="results-upload">
+    <div class="card">
+      <div class="card-title flex-between">
+        <span>Document Record</span>
+        <button class="btn-danger" onclick="deleteUploadDoc()">🗑 Delete</button>
+      </div>
+      <div class="meta-grid" id="docMeta-upload"></div>
+    </div>
+    <div id="entityCards-upload"></div>
+    <div class="card">
+      <div class="card-title">
+        Keywords <span class="count" id="kwCount-upload"></span>
+      </div>
+      <div class="kw-cloud" id="kwCloud-upload"></div>
+    </div>
+  </div>
+
+
+</div>

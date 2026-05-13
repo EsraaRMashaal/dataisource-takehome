@@ -1,0 +1,33 @@
+/*
+ * ══════════════════════════════════════════════════════════════
+ *  UTILITIES — Additional responsive and layout helpers
+ *
+ *  Note: Core utility classes (flex, text, spacing, color) live
+ *  in helpers.css. This file previously duplicated the toast
+ *  notification system; that content now lives exclusively in
+ *  upload.css. Only additive, non-overlapping helpers belong here.
+ * ══════════════════════════════════════════════════════════════
+ */
+
+/* ────────────────────────────────────────────────────────────
+   Responsive visibility helpers
+──────────────────────────────────────────────────────────── */
+@media (max-width: 575px) {
+  .hide-xs { display: none !important; }
+}
+@media (min-width: 576px) and (max-width: 767px) {
+  .hide-sm { display: none !important; }
+}
+@media (max-width: 767px) {
+  .hide-mobile { display: none !important; }
+}
+@media (min-width: 768px) {
+  .hide-desktop { display: none !important; }
+}
+
+/* ────────────────────────────────────────────────────────────
+   Scroll padding — prevents fixed navbar from covering anchors
+──────────────────────────────────────────────────────────── */
+[id] {
+  scroll-margin-top: calc(var(--navbar-h) + 1rem);
+}

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DataISource — Supplier Intelligence Platform</title>
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- App CSS — helpers.css first (defines all CSS variables) -->
+  <link rel="stylesheet" href="css/helpers.css">
+  <link rel="stylesheet" href="css/toast.css">
+  <link rel="stylesheet" href="css/index.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/upload.css">
+  <link rel="stylesheet" href="css/utilities.css">
+</head>
+<body>
+
+  <!-- ─── Sidebar ─── -->
+  <aside class="app-sidebar" id="appSidebar">
+
+    <div class="sidebar-brand-wrap">
+      <a class="sidebar-brand" href="#" onclick="showDashboardView(); return false;">
+        <span class="sidebar-brand-icon">🏭</span>
+        <div>
+          <span class="sidebar-brand-name">DataISource</span>
+          <span class="sidebar-brand-sub">Supplier Intelligence</span>
+        </div>
+      </a>
+    </div>
+
+    <div class="sidebar-section-label">Main Menu</div>
+    <nav class="sidebar-nav">
+      <button class="sidebar-nav-item active" id="navBtnDashboard" onclick="showDashboardView()">
+        <span class="nav-item-icon">📊</span>
+        <span class="nav-item-label">Dashboard</span>
+      </button>
+      <button class="sidebar-nav-item" id="navBtnUpload" onclick="showUploadView()">
+        <span class="nav-item-icon">📤</span>
+        <span class="nav-item-label">Upload Document</span>
+      </button>
+      <button class="sidebar-nav-item" id="navBtnWsTest" onclick="showWsTestView()">
+        <span class="nav-item-icon">⚡</span>
+        <span class="nav-item-label">WS Test</span>
+      </button>
+      <button class="sidebar-nav-item" id="navBtnNews" onclick="showNewsView()">
+        <span class="nav-item-icon">📡</span>
+        <span class="nav-item-label">News Monitor</span>
+      </button>
+      <button class="sidebar-nav-item" id="navBtnTables" onclick="showTablesView()">
+        <span class="nav-item-icon">🗄️</span>
+        <span class="nav-item-label">DB Explorer</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-section-label">Live Events</div>
+    <!-- WS Panel loads here -->
+    <div id="wsPanelPartial" class="sidebar-ws-wrap"></div>
+
+    <div class="sidebar-footer">v1.0.0 · DataISource</div>
+  </aside>
+
+  <!-- Mobile overlay -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <!-- ─── Right Sidebar — Confidence Legend ─── -->
+  <aside class="right-sidebar" id="rightSidebar">
+    <div class="right-sidebar-header">
+      <span class="right-sidebar-title">📊 Confidence Legend</span>
+    </div>
+    <div class="right-sidebar-body">
+      <div id="confidenceLegendPartial"></div>
+    </div>
+  </aside>
+
+  <!-- ─── Main Area ─── -->
+  <div class="main-area">
+
+    <!-- Top bar -->
+    <header class="top-bar">
+      <button class="sidebar-toggle-btn" onclick="toggleSidebar()" aria-label="Toggle sidebar">☰</button>
+      <div class="top-bar-brand">
+        <span>🏭</span><span>DataISource</span>
+      </div>
+      <div class="top-bar-title" id="topBarTitle">Dashboard</div>
+      <div class="top-bar-actions">
+        <span class="ws-status-badge">
+          <span class="ws-nav-dot" id="wsNavDot"></span>
+          <span class="ws-badge-text" id="wsNavText">Disconnected</span>
+        </span>
+      </div>
+    </header>
+
+    <!-- Page content -->
+    <main id="mainContent">
+      <div class="content-wrap">
+        <div id="dashboardViewPartial"></div>
+        <div id="uploadViewPartial"></div>
+        <div id="wsTestViewPartial"></div>
+        <div id="newsViewPartial"></div>
+        <div id="tablesViewPartial"></div>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js"></script>
+
+  <!-- App Scripts (correct load order) -->
+  <script src="js/toast.js"></script>
+  <script src="js/constants.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/renderers.js"></script>
+  <script src="js/view-switcher.js"></script>
+  <script src="js/ws-panel.js"></script>
+  <script src="js/ws-test.js"></script>
+  <script src="js/upload.js"></script>
+  <script src="js/home.js"></script>
+  <script src="js/news.js"></script>
+  <script src="js/tables.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

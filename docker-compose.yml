@@ -1,0 +1,50 @@
+name: dataisource-takehome
+
+services:
+  api:
+    image: dataisource/takehome-api:latest
+    container_name: dataisource-takehome-api
+
+    build:
+      # Build context is the project root so COPY commands in the Dockerfile
+      # can reach requirements.txt, app/, and assets/ from one level up.
+      context: ..
+      dockerfile: app/Dockerfile
+
+    ports:
+      - "8800:8800"
+
+    # app/.env is resolved relative to this docker-compose.yml file.
+    env_file:
+      - .env
+
+    volumes:
+      # SQLite database persists across restarts.
+      # Path must match SQLITE_DB_PATH in app/.env (/app/data/...).
+      # ../data resolves to <project_root>/data from this file's location.
+      - ../data:/app/data
+
+      # Assets (sample RFQ document) mounted read-only.
+      - ../assets:/app/assets:ro
+
+    restart: unless-stopped
+
+    healthcheck:
+      # Hits the versioned health endpoint; fails if the DB is unreachable.
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8800/api/v1/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+# ── Notes ─────────────────────────────────────────────────────────────────────
+# Run from the project root:   docker compose -f app/docker-compose.yml up --build
+# Or from inside app/:         docker compose up --build
+#
+# SQLite trade-off: the DB file lives in <project_root>/data/ via volume mount.
+# For production or multi-replica deployments swap for Postgres + managed volume.
+#
+# GDELT polling runs as a background worker inside the api process (APScheduler).
+# To run it as a separate container, add a second service that shares the data volume
+# and overrides CMD to run the worker entrypoint directly.

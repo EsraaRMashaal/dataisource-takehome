@@ -1,0 +1,225 @@
+@charset "UTF-8";
+/*
+ * ENTERPRISE DESIGN SYSTEM - CSS FOUNDATIONS
+ * Single source of truth for design tokens, typography,
+ * spacing, colours, shadows, and utility classes.
+ *
+ * Load order: FIRST (before all other app CSS files)
+ */
+
+/* ==========================================================
+   1. DESIGN TOKENS - CSS Custom Properties
+   ========================================================== */
+:root {
+  /* --- Primary Brand Palette --- */
+  --clr-primary:        #0f3460;
+  --clr-primary-dark:   #16213e;
+  --clr-primary-light:  #1a4b8a;
+  --clr-primary-faint:  #eef3ff;
+  --clr-primary-muted:  rgba(15, 52, 96, 0.08);
+
+  /* Legacy aliases (backwards compatibility) */
+  --brand:      #0f3460;
+  --brand-dark: #16213e;
+
+  /* --- Semantic Colours --- */
+  --clr-success:    #1e8e3e;
+  --clr-success-bg: #e6f4ea;
+  --clr-warning:    #c97b00;
+  --clr-warning-bg: #fef7e0;
+  --clr-danger:     #d93025;
+  --clr-danger-bg:  #fce8e6;
+  --clr-info:       #1a73e8;
+  --clr-info-bg:    #e8f0fe;
+  --clr-neutral:    #555555;
+  --clr-neutral-bg: #f0f2f7;
+
+  /* --- Surfaces --- */
+  --surface-app:    #f0f2f7;
+  --surface-card:   #ffffff;
+  --surface-subtle: #f5f7fc;
+  --surface-muted:  #fafbfc;
+  --surface-active: #eef3ff;
+
+  /* --- Text --- */
+  --txt-primary:   #1a1a2e;
+  --txt-secondary: #555555;
+  --txt-muted:     #888888;
+  --txt-hint:      #aaaaaa;
+  --txt-faint:     #bbbbbb;
+
+  /* --- Borders --- */
+  --border-faint:   #f0f2f7;
+  --border-light:   #eef0f6;
+  --border-default: #d0d7e0;
+  --border-strong:  #c5cfe0;
+
+  /* --- Typography --- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+
+  --fz-2xs:  0.65rem;
+  --fz-xs:   0.7rem;
+  --fz-sm:   0.78rem;
+  --fz-md:   0.85rem;
+  --fz-base: 1rem;
+  --fz-lg:   1.15rem;
+  --fz-xl:   1.35rem;
+  --fz-2xl:  1.6rem;
+  --fz-3xl:  2rem;
+  --fz-4xl:  2.4rem;
+
+  --fw-normal:   400;
+  --fw-medium:   500;
+  --fw-semibold: 600;
+  --fw-bold:     700;
+
+  --lh-tight:   1.2;
+  --lh-normal:  1.5;
+  --lh-relaxed: 1.65;
+
+  --ls-tight:  -0.01em;
+  --ls-wide:    0.05em;
+  --ls-wider:   0.07em;
+
+  /* --- Spacing Scale (4px base unit) --- */
+  --sp-1:  0.25rem;
+  --sp-2:  0.5rem;
+  --sp-3:  0.75rem;
+  --sp-4:  1rem;
+  --sp-5:  1.25rem;
+  --sp-6:  1.5rem;
+  --sp-8:  2rem;
+  --sp-10: 2.5rem;
+  --sp-12: 3rem;
+
+  /* --- Border Radius --- */
+  --radius-xs:   3px;
+  --radius-sm:   6px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-pill: 20px;
+
+  /* --- Box Shadows --- */
+  --shadow-xs: 0 1px 3px  rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 2px 6px  rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 2px 10px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 4px 18px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.16);
+
+  /* --- Transitions --- */
+  --ease-fast: all 0.12s ease;
+  --ease-base: all 0.2s  ease;
+  --ease-slow: all 0.3s  ease;
+
+  /* --- Layout Dimensions --- */
+  --navbar-h:    56px;
+  --footer-h:    44px;
+  --sidebar-w:   260px;
+  --content-max: 1080px;
+}
+
+/* ==========================================================
+   2. GLOBAL BASE RESET (supplements Bootstrap Reboot)
+   ========================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+/* Normalise headings: Bootstrap sets fw:500, we use bold */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  line-height: 1.2;
+  color: #1a1a2e;
+  margin-top: 0;
+}
+
+/* Remove blue focus ring on buttons when not keyboard-navigating */
+button:focus:not(:focus-visible) { outline: none; }
+
+/* ==========================================================
+   3. TYPOGRAPHY UTILITIES
+   ========================================================== */
+.text-2xs  { font-size: 0.65rem  !important; }
+.text-xs   { font-size: 0.7rem   !important; }
+.text-sm   { font-size: 0.78rem  !important; }
+.text-md   { font-size: 0.85rem  !important; }
+.text-base { font-size: 1rem     !important; }
+.text-lg   { font-size: 1.15rem  !important; }
+.text-mono { font-family: SFMono-Regular, Consolas, monospace !important; }
+
+.fw-400  { font-weight: 400 !important; }
+.fw-500  { font-weight: 500 !important; }
+.fw-600  { font-weight: 600 !important; }
+.fw-700  { font-weight: 700 !important; }
+
+.text-upper    { text-transform: uppercase   !important; }
+.text-left     { text-align: left            !important; }
+.text-center   { text-align: center          !important; }
+.text-nowrap   { white-space: nowrap         !important; }
+.text-truncate {
+  overflow: hidden        !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap     !important;
+}
+.text-break-all { word-break: break-all !important; }
+
+/* ==========================================================
+   4. COLOUR UTILITIES
+   ========================================================== */
+.text-brand   { color: #0f3460 !important; }
+.text-muted   { color: #888888 !important; }
+.text-subtle  { color: #555555 !important; }
+.text-hint    { color: #aaaaaa !important; }
+.text-faint   { color: #bbbbbb !important; }
+.text-success { color: #1e8e3e !important; }
+.text-danger  { color: #d93025 !important; }
+.text-warning { color: #c97b00 !important; }
+.text-info    { color: #1a73e8 !important; }
+
+/* ==========================================================
+   5. FLEXBOX LAYOUT UTILITIES
+   ========================================================== */
+.flex         { display: flex !important; }
+.flex-col     { display: flex !important; flex-direction: column !important; }
+.flex-center  { display: flex !important; align-items: center !important; }
+.flex-between {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+.flex-wrap     { flex-wrap: wrap   !important; }
+.flex-1        { flex: 1           !important; }
+.flex-shrink-0 { flex-shrink: 0   !important; }
+
+.gap-xs { gap: 0.25rem !important; }
+.gap-sm { gap: 0.5rem  !important; }
+.gap-md { gap: 0.75rem !important; }
+.gap-lg { gap: 1rem    !important; }
+
+/* ==========================================================
+   6. SPACING UTILITIES
+   ========================================================== */
+.mt-xs { margin-top: 0.25rem !important; }
+.mt-sm { margin-top: 0.5rem  !important; }
+.mt-md { margin-top: 1rem    !important; }
+.mt-lg { margin-top: 1.5rem  !important; }
+
+.mb-xs { margin-bottom: 0.25rem !important; }
+.mb-sm { margin-bottom: 0.5rem  !important; }
+.mb-md { margin-bottom: 1rem    !important; }
+.mb-0  { margin-bottom: 0       !important; }
+
+.p-0 { padding: 0 !important; }
+
+/* ==========================================================
+   7. DISPLAY & DIMENSION UTILITIES
+   ========================================================== */
+.hidden          { display: none    !important; }
+.block           { display: block   !important; }
+.inline          { display: inline  !important; }
+.w-full          { width: 100%      !important; }
+.w-auto          { width: auto      !important; }
+.overflow-hidden { overflow: hidden !important; }
+.cursor-pointer  { cursor: pointer  !important; }

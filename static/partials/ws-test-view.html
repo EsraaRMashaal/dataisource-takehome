@@ -1,0 +1,65 @@
+<!-- WebSocket Test View Partial -->
+<div id="wsTestView" style="display:none">
+
+  <!-- Greeting -->
+  <div class="page-greeting">
+    <div>
+      <h1 class="greeting-title">WebSocket Test ⚡</h1>
+      <p class="greeting-sub">Send raw messages through the live event stream and watch responses</p>
+    </div>
+  </div>
+
+  <!-- Connection + Compose row -->
+  <div class="wst-layout">
+
+    <!-- Left: compose -->
+    <div class="wst-compose-col">
+
+      <!-- Connection status card -->
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-title">Connection</div>
+        <div class="wst-conn-row">
+          <span class="ws-dot" id="wstDot"></span>
+          <span class="wst-conn-label" id="wstConnLabel">Disconnected</span>
+          <button class="wst-conn-btn" id="wstConnBtn" onclick="wstToggleConnect()">Connect</button>
+        </div>
+        <div class="wst-conn-url">ws://localhost:8800/api/v1/ws/events</div>
+      </div>
+
+      <!-- Message compose card -->
+      <div class="card">
+        <div class="card-title">Message</div>
+        <textarea
+          id="wstInput"
+          class="wst-input"
+          placeholder='Type a message or paste JSON, e.g. {"event":"ping"}'
+          rows="5"
+        ></textarea>
+        <div class="wst-send-row">
+          <button class="btn-primary-action" id="wstSendBtn" onclick="wstSend()" disabled>
+            ⚡ Send
+          </button>
+          <button class="btn-outline-action" onclick="wstClear()" style="margin-left:0.5rem">
+            Clear Log
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right: message log -->
+    <div class="wst-log-col">
+      <div class="card" style="height:100%">
+        <div class="card-title flex-between">
+          <span>Message Log</span>
+          <span class="count" id="wstLogCount">0 messages</span>
+        </div>
+        <div class="wst-log" id="wstLog">
+          <div class="wst-log-empty">Connect and send a message to see events here</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>

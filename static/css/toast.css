@@ -1,0 +1,130 @@
+/*
+ * TOAST NOTIFICATIONS
+ *
+ * Bootstrap 5 ships its own .toast component that sets opacity:0 and
+ * display:none on ALL .toast elements.  We override those rules here
+ * with higher specificity + !important so our notifications always show.
+ *
+ * Class names deliberately match the original utils.js so browser-cached
+ * versions of that file continue to work without any rename needed.
+ */
+
+/* ── Container ─────────────────────────────────────────── */
+.toast-container {
+  position: fixed !important;
+  bottom: 1.5rem !important;
+  right:  1.5rem !important;
+  z-index: 99999 !important;
+  display: flex !important;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 380px;
+  width: calc(100vw - 3rem);
+  pointer-events: none;
+}
+
+/* ── Override Bootstrap's .toast hiding rules ──────────── */
+/*  Bootstrap: .toast { opacity:0 }
+    Bootstrap: .toast:not(.showing):not(.show) { display:none }
+    Both are beaten here with specificity + !important           */
+.toast-container > .toast {
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* ── Base toast styling ─────────────────────────────────── */
+.toast-container .toast {
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.8rem 1rem;
+  border-radius: 10px !important;
+  background: #ffffff !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.16), 0 0 0 1px rgba(0,0,0,0.07) !important;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: #1a1a2e;
+  pointer-events: all;
+  width: auto !important;
+  max-width: 100% !important;
+  border: none !important;
+  animation: app-toast-in 0.22s ease forwards;
+}
+.toast-container .toast.removing {
+  animation: app-toast-out 0.22s ease forwards !important;
+  opacity: 0 !important;
+}
+
+/* ── Variants ───────────────────────────────────────────── */
+.toast-container .toast.info    { border-left: 3px solid #1a73e8 !important; }
+.toast-container .toast.success { border-left: 3px solid #1e8e3e !important; }
+.toast-container .toast.error   { border-left: 3px solid #d93025 !important; }
+.toast-container .toast.confirm {
+  border-left: 3px solid #c97b00 !important;
+  flex-direction: column;
+}
+
+/* ── Icon ───────────────────────────────────────────────── */
+.toast-icon {
+  font-size: 0.95rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+  font-weight: 700;
+}
+.toast.info    .toast-icon { color: #1a73e8; }
+.toast.success .toast-icon { color: #1e8e3e; }
+.toast.error   .toast-icon { color: #d93025; }
+.toast.confirm .toast-icon { color: #c97b00; }
+
+/* ── Message ────────────────────────────────────────────── */
+.toast-msg { flex: 1; }
+
+/* ── Close button ───────────────────────────────────────── */
+.toast-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #aaaaaa;
+  padding: 0;
+  font-size: 0.75rem;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.toast-close:hover { color: #555555; }
+
+/* ── Confirm layout ─────────────────────────────────────── */
+.toast-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+.toast-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+.toast-btn {
+  padding: 0.3rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s;
+}
+.toast-btn-cancel        { background: #f0f2f7; color: #555555; }
+.toast-btn-cancel:hover  { background: #dde1ea; }
+.toast-btn-confirm       { background: #d93025; color: #ffffff; }
+.toast-btn-confirm:hover { background: #b52419; }
+
+/* ── Animations ─────────────────────────────────────────── */
+@keyframes app-toast-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+@keyframes app-toast-out {
+  from { opacity: 1; transform: translateY(0);    }
+  to   { opacity: 0; transform: translateY(8px);  }
+}

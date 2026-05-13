@@ -1,0 +1,64 @@
+<!-- Database Tables View Partial -->
+<div id="tablesView" style="display:none">
+
+  <!-- Page header -->
+  <div class="page-greeting">
+    <div>
+      <h1 class="greeting-title">Database Explorer 🗄️</h1>
+      <p class="greeting-sub">Browse all database tables and their raw data</p>
+    </div>
+    <button class="btn-outline-action" onclick="loadTablesList()">↻ Refresh</button>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="stats-row">
+    <div class="stat-card stat-card-total">
+      <div class="stat-icon-row"><span class="stat-icon">📁</span></div>
+      <div class="stat-value" id="tablesStatDocs">—</div>
+      <div class="stat-label">Documents</div>
+    </div>
+    <div class="stat-card stat-card-processed">
+      <div class="stat-icon-row"><span class="stat-icon">🔔</span></div>
+      <div class="stat-value" id="tablesStatAlerts">—</div>
+      <div class="stat-label">Alert Events</div>
+    </div>
+    <div class="stat-card stat-card-pending">
+      <div class="stat-icon-row"><span class="stat-icon">🔄</span></div>
+      <div class="stat-value" id="tablesStatPolls">—</div>
+      <div class="stat-label">Poll Runs</div>
+    </div>
+  </div>
+
+  <!-- Tables Card -->
+  <div class="card">
+    <div class="card-title" style="flex-direction:column;gap:0.75rem;align-items:flex-start;">
+      <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+        <span>Tables <span class="count" id="tablesRowCount"></span></span>
+        <button class="btn-danger" id="tablesClearBtn"
+          onclick="clearTable(window._tablesState.active)"
+          title="Delete all rows in the current table">
+          🗑 Clear Table
+        </button>
+      </div>
+      <div class="tables-tab-list" id="tablesTabList">
+        <span style="font-size:0.8rem;color:var(--txt-muted);">Loading…</span>
+      </div>
+    </div>
+
+    <!-- Pagination controls -->
+    <div id="tablesPagination" style="display:none;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.85rem;">
+      <button class="btn-outline-action" id="tablesPrevBtn" onclick="tablesChangePage(-1)">← Prev</button>
+      <span id="tablesPageInfo" style="font-size:0.82rem;color:var(--txt-muted);"></span>
+      <button class="btn-outline-action" id="tablesNextBtn" onclick="tablesChangePage(1)">Next →</button>
+    </div>
+
+    <!-- Data Grid -->
+    <div id="tablesGridWrap">
+      <div class="empty-state">
+        <div class="empty-icon">🗄️</div>
+        Loading tables…
+      </div>
+    </div>
+  </div>
+
+</div>
