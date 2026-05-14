@@ -480,5 +480,12 @@ static/js/
 
 ---
 
+## Author
+
 **Esraa Raffik Mashaal**
-📞 +20 101 358 9988 · ✉️ esraa.mashaal96@gmail.com · [LinkedIn](https://www.linkedin.com/in/esraamashaal/) · Senior Software Engineer
+Senior Software Engineer
+
+📧 [esraa.mashaal96@gmail.com](mailto:esraa.mashaal96@gmail.com)
+📱 +20 101 358 9988
+🔗 LinkedIn: https://www.linkedin.com/in/esraamashaal/
+
