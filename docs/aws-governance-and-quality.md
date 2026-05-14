@@ -46,17 +46,6 @@ The current `ConnectionManager` is **in-process**. Correct for one replica; brea
 | `poll_runs` | Operational | 90 days |
 | `websocket_messages` | Operational audit log | 7 days rolling |
 
-### Encryption
-
-| Layer | Mechanism |
-|-------|-----------|
-| In-transit API | TLS 1.2+ at ALB; HTTP → HTTPS redirect |
-| In-transit DB | `sslmode=require` on asyncpg DSN |
-| In-transit S3 | HTTPS only; bucket policy denies non-HTTPS |
-| At-rest RDS | AES-256, RDS managed key |
-| At-rest S3 | SSE-S3 default bucket encryption |
-| Secrets | SSM SecureString — customer-managed KMS key |
-
 ### Access Control
 
 - ECS task IAM role: `ssm:GetParameter` scoped to its own path prefix; `s3:PutObject/GetObject` scoped to its own prefix only

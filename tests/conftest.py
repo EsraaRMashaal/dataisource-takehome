@@ -5,7 +5,7 @@ Strategy:
 - Each test gets a fresh file-based SQLite database (temp file) for full isolation.
 - ASGITransport is used so the ASGI lifespan is NOT triggered, which means we must
   create the schema ourselves in the `engine` fixture.
-- `get_db` is overridden via app.dependency_overrides so every route handler uses
+- `get_db` is overridden via dependency_overrides so every route handler uses
   the test session factory pointing at the temp database.
 - Tests that need to seed rows directly take the `engine` fixture and open their own
   short-lived session before issuing HTTP requests.
@@ -18,7 +18,6 @@ import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-import app.db.sqlite.base  # noqa: F401 — registers ORM models on Base.metadata
 from app.db.database import Base, get_db
 from app.server import app
 

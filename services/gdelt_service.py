@@ -21,24 +21,25 @@ from typing import Any
 
 import httpx
 
+from app.settings import settings
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
-MONITOR_TOPICS: list[str] = [
-    "shipping delays",
-    "factory shutdown",
-    "steel shortage",
-    "logistics crisis",
-    "port congestion",
-    "freight disruption",
-    "raw material shortage",
-    "manufacturing delays",
-    "transport strike",
-    "industrial shutdown",
+_DEFAULT_TOPICS = [
+    "shipping delays", "factory shutdown",
+    "raw material shortage", "manufacturing delays",
 ]
+
+def _monitor_topics() -> list[str]:
+    raw = (settings.gdelt_query or "").strip()
+    if not raw:
+        return _DEFAULT_TOPICS
+    return [t.strip() for t in raw.split(",") if t.strip()]
+
 
 GDELT_API_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
 
@@ -83,13 +84,14 @@ async def poll(max_records: int = 3) -> list[dict[str, Any]]:
         RuntimeError: if every sampled topic failed and no articles were collected.
     """
     errors: list[str] = []
-    topics = random.sample(MONITOR_TOPICS, k=min(TOPICS_PER_POLL, len(MONITOR_TOPICS)))
+    all_topics = _monitor_topics()
+    topics = random.sample(all_topics, k=min(TOPICS_PER_POLL, len(all_topics)))
     sem = asyncio.Semaphore(CONCURRENCY)
     done_event = asyncio.Event()
 
     logger.info(
         "Poll starting — topics=%d/%d selected=%s",
-        len(topics), len(MONITOR_TOPICS), topics,
+        len(topics), len(all_topics), topics,
     )
 
     async with httpx.AsyncClient(

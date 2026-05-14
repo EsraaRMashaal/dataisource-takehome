@@ -408,14 +408,25 @@
 /* ────────────────────────────────────────────────────────────
    11. WEBSOCKET TEST PAGE
 ──────────────────────────────────────────────────────────── */
-.wst-layout {
+
+/* Top row: connection card + compose card side by side */
+.wst-top-row {
   display: grid;
-  grid-template-columns: 360px 1fr;
-  gap: 1.5rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 0;   /* card below already has margin-bottom */
   align-items: start;
 }
 
-.wst-compose-col { display: flex; flex-direction: column; }
+/* Full-width log card */
+.wst-log-card .wst-log {
+  max-height: 460px;
+}
+
+.wst-hint {
+  font-size: 0.78rem; color: #94a3b8;
+  margin: 0.6rem 0 0; line-height: 1.5;
+}
 
 /* Connection row inside the status card */
 .wst-conn-row {
@@ -458,7 +469,7 @@
 .wst-send-row { display: flex; align-items: center; margin-top: 0.85rem; }
 
 /* Message log */
-.wst-log-col { min-width: 0; }
+.wst-log-col { min-width: 0; }   /* kept for any legacy references */
 
 .wst-log {
   overflow-y: auto; max-height: 520px; min-height: 200px;
@@ -506,8 +517,8 @@
 }
 
 @media (max-width: 900px) {
-  .wst-layout { grid-template-columns: 1fr; }
-  .wst-log    { max-height: 320px; }
+  .wst-top-row { grid-template-columns: 1fr; }
+  .wst-log     { max-height: 320px; }
 }
 
 /* ────────────────────────────────────────────────────────────

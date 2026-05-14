@@ -30,6 +30,8 @@ A supplier-intelligence backend platform for manufacturing RFQ (Request for Quot
 - [Getting Started](#getting-started)
 - [Frontend SPA](#frontend-spa)
 - [Design Decisions](#design-decisions)
+- [Documentation](#documentation)
+- [Screenshots](#screenshots)
 
 ---
 
@@ -90,23 +92,23 @@ Client ──POST /documents──► FastAPI ──► ExtractionService ──
 ### Layered Design
 
 ```
-┌─────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────┐
 │                  HTTP / WebSocket                │
 │              (FastAPI routes + ASGI)             │
-├─────────────────────────────────────────────────┤
+├──────────────────────────────────────────────────┤
 │              API Layer  (api/v1/)                │
 │   endpoints/  │  models/  │  ws/                │
-├─────────────────────────────────────────────────┤
+├──────────────────────────────────────────────────┤
 │             Service Layer  (services/)           │
 │  DocumentService │ ExtractionService │ GdeltSvc  │
 │  PollService     │ AlertService      │ EventBus  │
-├─────────────────────────────────────────────────┤
+├──────────────────────────────────────────────────┤
 │           Repository Layer  (db/repositories/)  │
 │  DocumentRepo │ AlertRepo │ PollRepo │ WsAudit   │
-├─────────────────────────────────────────────────┤
+├──────────────────────────────────────────────────┤
 │         Persistence  (SQLite + aiosqlite)        │
 │   SQLAlchemy 2.0 async ORM │ WAL mode enabled   │
-└─────────────────────────────────────────────────┘
+└──────────────────────────────────────────────────┘
 ```
 
 ### Event-Driven Communication
@@ -172,12 +174,9 @@ Scheduler (asyncio) ─── every POLL_INTERVAL_SECONDS ──►┐
 
 ![Feature](https://img.shields.io/badge/Feature-GDELT_Monitoring-FF6B35?style=flat-square)
 
-- Background scheduler polls GDELT API every `POLL_INTERVAL_SECONDS` (default 300 s)
-- Samples 3 random topics from a configured list (shipping delays, factory shutdowns, supply shortages, etc.)
-- Fetches up to 3 articles per topic with concurrency control and stagger delays
-- Deduplicates by article URL across topics and across poll runs
-- Creates `AlertEvent` records, pushes them to WebSocket subscribers
-- Can also be triggered on-demand via `POST /api/v1/news/poll`
+Background polling of the GDELT API for supply-chain disruption signals, with deduplication, retry/backoff, and real-time WebSocket push.
+
+→ See **[docs/gdelt-monitoring.md](docs/gdelt-monitoring.md)** for full details.
 
 ### 4. Database Explorer
 
@@ -528,18 +527,7 @@ Configurable via environment variables:
 
 ## GDELT Monitoring
 
-![GDELT](https://img.shields.io/badge/GDELT-Global_Database_of_Events-FF6B35?style=flat-square)
-
-The background scheduler runs a full poll cycle every `POLL_INTERVAL_SECONDS`:
-
-1. **Sample** 3 topics randomly from the configured monitor list (shipping delays, factory shutdowns, port closures, raw material shortages, logistics disruptions, sanctions, quality recalls, etc.)
-2. **Fetch** up to 3 articles per topic concurrently (semaphore `max_concurrent=3`, stagger delay)
-3. **Deduplicate** by article URL across topics and across previous poll runs
-4. **Persist** new `AlertEvent` rows; skip duplicates via unique constraints
-5. **Publish** `alert.detected` events to the WebSocket event bus
-6. **Record** the full poll run in `poll_runs` with status, counts, and timing
-
-Retry logic: exponential backoff with rate-limit handling for GDELT API calls.
+→ See **[docs/gdelt-monitoring.md](docs/gdelt-monitoring.md)** for the full poll cycle, retry strategy, monitor topics, API details, and WebSocket events.
 
 ---
 
@@ -553,7 +541,7 @@ Quick start:
 
 ```bash
 cp sample.env .env
-docker compose up --build
+docker compose -f docker-compose.yml up --build
 ```
 
 Open `http://localhost:8800/index.html` (SPA) and `http://localhost:8800/docs` (Swagger UI).
@@ -577,11 +565,13 @@ The zero-build SPA is served from `static/` and loaded by `ui.py`.
 
 ### Live Event Panel
 
-A collapsible right sidebar shows real-time WebSocket events as they arrive, colour-coded by channel:
+A collapsible right sidebar shows real-time WebSocket events as they arrive, colour-coded by event type:
 
-- 🟢 `documents` — green
-- 🟠 `alerts` — orange
-- 🔵 `records` — blue
+- `document.progress` — amber
+- `document.completed` — green
+- `document.failed` — red
+- `alert.detected` — purple
+- `record.created` — teal
 
 ### Module Layout
 
@@ -609,70 +599,77 @@ static/js/
 
 ## Design Decisions
 
-### Why SQLite?
-
-SQLite + aiosqlite with SQLAlchemy async keeps the stack self-contained with zero external services. WAL mode is enabled for concurrent read/write. The repository pattern means swapping to PostgreSQL requires only a connection string change and replacing the engine factory.
-
-### Why Rule-Based NLP (no model)?
-
-Manufacturing entity patterns are highly structured (material grade codes like `SS316L`, EN standards, ISO certs) and don't benefit from probabilistic models. A blank spaCy tokenizer with `Matcher` / `PhraseMatcher` is deterministic, fast, zero-download, and testable — which matters for a take-home submission that must run offline.
-
-### Why an Internal Event Bus?
-
-Decoupling services from the WebSocket layer via an in-process pub/sub (EventBus) means services don't need to know about connected clients. Any future consumer (email notifier, webhook sender, metrics) can subscribe to the same events without touching service code.
-
-### Why Deduplication at Multiple Levels?
-
-- **Documents:** SHA-256 catches byte-identical uploads before any processing
-- **Keywords:** normalized unique constraint prevents duplicate extraction on re-processing
-- **Alerts:** URL-level unique constraint survives across poll runs; `source_item_id` partial unique catches GDELT-level deduplication
-- **Savepoint rollback** per alert insertion means one duplicate doesn't abort the whole poll run
-
-### Async Throughout
-
-FastAPI + Uvicorn (ASGI), SQLAlchemy async sessions, httpx async client, and asyncio-based scheduler all share the same event loop. No threading complexity; no blocking I/O in request handlers.
-
-### Production Path (AWS)
-
-For the full AWS service mapping, WebSocket scaling strategy (Redis Pub/Sub), data governance (retention, encryption, access control), deduplication constraints, and assumption trade-offs, see:
-
-**[docs/aws-governance-and-quality.md](docs/aws-governance-and-quality.md)**
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| **Database** | SQLite + aiosqlite | Zero setup; WAL mode for concurrent r/w; swap to Postgres = one connection string change |
+| **NLP** | Rule-based spaCy (no model) | Manufacturing codes are deterministic patterns; zero download; fully testable offline |
+| **Event delivery** | In-process EventBus | Services stay decoupled from WebSocket layer; future consumers (webhooks, email) attach without touching service code |
+| **Deduplication** | SHA-256 → unique constraints → savepoint rollback | Each layer catches a different class of duplicate; one failure never aborts the whole run |
+| **Concurrency** | Full async (FastAPI / SQLAlchemy / httpx / asyncio) | Single event loop; no blocking I/O; no threading complexity |
 
 ---
 
-## Quick Reference
+## Documentation
 
-```bash
-# Health check
-curl http://localhost:8800/api/v1/health
+| Document | Description |
+|----------|-------------|
+| [diagram-requirements.md](docs/diagram-requirements.md) | System architecture, REST, WebSocket, polling, and deployment Mermaid diagrams |
+| [local-run-and-testing.md](docs/local-run-and-testing.md) | Docker setup, environment variables, test runner commands, and demo walkthrough |
+| [aws-governance-and-quality.md](docs/aws-governance-and-quality.md) | AWS service mapping, WebSocket scaling strategy, data governance, and trade-offs |
+| [gdelt-monitoring.md](docs/gdelt-monitoring.md) | GDELT poll cycle, retry strategy, monitor topics, API details, and WebSocket events |
+| [manufacturing_rfq_sample.txt](docs/manufacturing_rfq_sample.txt) | Sample RFQ document for testing the extraction pipeline |
 
-# Upload a document
-curl -X POST http://localhost:8800/api/v1/documents \
-  -F "file=@assets/input/manufacturing_rfq_sample.txt"
+> **Quick note:** Start with `local-run-and-testing.md` to get the app running locally, then use `aws-governance-and-quality.md` for the production architecture rationale, and `diagram-requirements.md` for the full visual system overview.
 
-# List documents
-curl http://localhost:8800/api/v1/documents
+---
 
-# Get keywords for a document
-curl http://localhost:8800/api/v1/documents/{id}/keywords
+## Screenshots
 
-# Get entities for a document
-curl http://localhost:8800/api/v1/documents/{id}/entities
+### Document Upload & Extraction
 
-# Trigger GDELT poll
-curl -X POST http://localhost:8800/api/v1/news/poll
+| | |
+|---|---|
+| ![Upload](docs/screenshoots/upload-doc.png) | ![Result](docs/screenshoots/doc-result.png) |
+| Upload interface | Extraction results |
+| ![Keywords](docs/screenshoots/kwywords-extraction.png) | ![Confidence](docs/screenshoots/confidence-scale.png) |
+| Keywords panel | Confidence scoring |
+| ![Commercial](docs/screenshoots/commercial-notes.png) | ![Packaging](docs/screenshoots/packaging-%20result.png) |
+| Commercial notes | Packaging entities |
+| ![Docs list](docs/screenshoots/view-docs.png) | |
+| Document list | |
 
-# List alerts
-curl http://localhost:8800/api/v1/news/alerts
+### WebSocket & Live Events
 
-# List DB tables
-curl http://localhost:8800/api/v1/tables
+| | |
+|---|---|
+| ![WS Test](docs/screenshoots/websocket-test.png) | ![Live Events](docs/screenshoots/live-events.png) |
+| WebSocket test view | Live events panel |
 
-# WebSocket (wscat)
-wscat -c ws://localhost:8800/api/v1/ws/events
-wscat -c ws://localhost:8800/api/v1/ws/events/documents
-```
+### News Monitor
+
+| | |
+|---|---|
+| ![Alerts](docs/screenshoots/news-monitor.png) | ![Alert detail](docs/screenshoots/news-details.png) |
+| GDELT alerts list | Alert detail |
+
+### Database Explorer
+
+| | |
+|---|---|
+| ![Explorer](docs/screenshoots/database-explorer.png) | ![Details](docs/screenshoots/database-details-data.png) |
+| Table browser | Row detail |
+| ![Pagination](docs/screenshoots/pagination.png) | ![Confirm](docs/screenshoots/confirmation-messages.png) |
+| Pagination | Delete confirmation |
+
+### API Testing
+
+![API Test](docs/screenshoots/api-test.png)
 
 ---
 
 *Built for the DataISource backend platform engineering take-home assessment.*
+
+---
+
+**Esraa Raffik Mashaal**
+📞 +20 101 358 9988 · ✉️ esraa.mashaal96@gmail.com · [LinkedIn](https://www.linkedin.com/in/esraamashaal/)

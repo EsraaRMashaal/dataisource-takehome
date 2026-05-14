@@ -44,7 +44,13 @@ class Settings(BaseSettings):
 
     # ── GDELT monitoring ──────────────────────────────────────────────────
     monitor_source: str = "gdelt"
-    gdelt_query: str = "manufacturing supply chain disruption"
+    # Comma-separated topics; parsed to a list by gdelt_service._monitor_topics().
+    # Stored as str so pydantic-settings never tries to JSON-decode it.
+    gdelt_query: str = (
+        "shipping delays,factory shutdown,steel shortage,logistics crisis,"
+        "port congestion,freight disruption,raw material shortage,"
+        "manufacturing delays,transport strike,industrial shutdown"
+    )
     poll_interval_seconds: int = 300
 
     # ── Confidence scoring weights ─────────────────────────────────────────
@@ -53,7 +59,7 @@ class Settings(BaseSettings):
     confidence_weight_context:    float = 0.2
 
     model_config = SettingsConfigDict(
-        # app/.env is the primary config file (resolved relative to this module).
+        # .env is the primary config file (resolved relative to this module).
         # env vars set in the shell or Docker always take precedence over file values.
         env_file=(_HERE / ".env",),
         env_file_encoding="utf-8",

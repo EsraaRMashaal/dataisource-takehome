@@ -15,7 +15,6 @@
 ## 1. System Architecture View
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#E3F2FD', 'primaryBorderColor': '#1565C0', 'lineColor': '#546E7A', 'fontSize': '13px'}}}%%
 graph TB
     classDef internet  fill:#FFEBEE,stroke:#C62828,color:#000,stroke-width:2px
     classDef external  fill:#FCE4EC,stroke:#AD1457,color:#000,stroke-width:2px
@@ -153,7 +152,6 @@ graph TB
 ## 2. REST Data Flow Zoomed View
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'actorBkg': '#E3F2FD', 'actorBorder': '#1565C0', 'actorTextColor': '#000000', 'signalColor': '#1565C0', 'signalTextColor': '#000000', 'noteBkgColor': '#FFF9C4', 'noteTextColor': '#000000', 'noteBorderColor': '#F9A825', 'labelBoxBkgColor': '#E8F5E9', 'labelBoxBorderColor': '#43A047', 'activationBkgColor': '#BBDEFB', 'activationBorderColor': '#1565C0', 'sequenceNumberColor': '#000000'}}}%%
 sequenceDiagram
     participant C  as Client
     participant EP as documents.py
@@ -259,7 +257,6 @@ sequenceDiagram
 ## 3. WebSocket Data Flow Zoomed View
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'actorBkg': '#E0F7FA', 'actorBorder': '#006064', 'actorTextColor': '#000000', 'signalColor': '#006064', 'signalTextColor': '#000000', 'noteBkgColor': '#FFF9C4', 'noteTextColor': '#000000', 'noteBorderColor': '#F9A825', 'labelBoxBkgColor': '#F3E5F5', 'labelBoxBorderColor': '#6A1B9A', 'activationBkgColor': '#B2EBF2', 'activationBorderColor': '#006064'}}}%%
 sequenceDiagram
     participant C   as Browser Client
     participant EP  as websocket.py
@@ -324,7 +321,6 @@ sequenceDiagram
 ## 4. Polling And Monitoring Data Flow Zoomed View
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'actorBkg': '#FFF3E0', 'actorBorder': '#E65100', 'actorTextColor': '#000000', 'signalColor': '#E65100', 'signalTextColor': '#000000', 'noteBkgColor': '#FFF9C4', 'noteTextColor': '#000000', 'noteBorderColor': '#F9A825', 'labelBoxBkgColor': '#E8F5E9', 'labelBoxBorderColor': '#2E7D32', 'activationBkgColor': '#FFE0B2', 'activationBorderColor': '#E65100'}}}%%
 sequenceDiagram
     participant SCHED  as Scheduler
     participant WORKER as PollingWorker
@@ -427,10 +423,7 @@ sequenceDiagram
 
 ## 5. Architecture to Deployment
 
-Local development to AWS production pipeline — from source code to a live container.
-
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#E3F2FD', 'primaryBorderColor': '#1565C0', 'lineColor': '#546E7A', 'fontSize': '13px'}}}%%
 graph LR
     classDef dev     fill:#E8F5E9,stroke:#2E7D32,color:#000,stroke-width:2px
     classDef ci      fill:#FFF9C4,stroke:#F9A825,color:#000,stroke-width:2px

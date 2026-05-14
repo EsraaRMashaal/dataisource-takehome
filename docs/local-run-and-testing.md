@@ -48,7 +48,7 @@ The file controls:
 ## 2. Start the API with Docker
 
 ```bash
-docker compose up --build
+ docker compose -f docker-compose.yml up --build
 ```
 
 Wait for:
@@ -143,7 +143,7 @@ docker compose run --rm api pytest app/tests/test_documents.py -v
 
 ```bash
 cp sample.env .env
-docker compose up --build
+docker compose -f docker-compose.yml up --build
 ```
 
 Open both tabs — everything below is done in the browser.
@@ -254,20 +254,38 @@ port congestion, freight disruption, raw material shortage,
 manufacturing delays, transport strike, industrial shutdown
 ```
 
-3 topics are sampled randomly on each poll run. The background scheduler starts automatically when the container starts (every `POLL_INTERVAL_SECONDS=300`).
+3 topics are sampled randomly on each poll run.
 
-**One-shot trigger via SPA**:
+There are two ways polling is triggered — automatic and manual:
+
+---
+
+### Approach 1 — Automatic (every 300 seconds)
+
+The background scheduler starts as soon as the container starts. Every `POLL_INTERVAL_SECONDS=300` (5 minutes) it fetches the latest GDELT articles matching your query terms, stores new alerts, and broadcasts the results over WebSocket.
+
+**You don't need to do anything** — leave the SPA open on the **News Monitor** page and alert cards will appear automatically each cycle. The SPA receives a real-time push notification (`alert.detected`) via WebSocket the moment each alert is saved. You can also watch the stream live in the **WebSocket Test** tab.
+
+---
+
+### Approach 2 — Manual trigger (on demand)
+
+Useful when you don't want to wait 5 minutes or want to demonstrate the flow immediately.
+
+**Via the SPA (recommended for demos)**:
 1. Click **News Monitor** in the left sidebar
 2. Click **Run Poll Now** — wait 5–15 s
 3. Alert cards populate the list with title, URL, matched terms, and detected time
-4. If the WebSocket tab is open, `alert.detected` events stream in simultaneously
+4. If the WebSocket tab is open, `alert.detected` events stream in simultaneously as each alert is saved
 
-**One-shot trigger via Swagger**: **POST /api/v1/news/poll** → **Try it out** → **Execute**
+**Via Swagger**: **POST /api/v1/news/poll** → **Try it out** → **Execute**
 
 Response `201`:
 ```json
 {"poll_run_id": "<uuid>", "status": "completed", "items_seen": 9, "alerts_created": 9}
 ```
+
+---
 
 **Duplicate handling**: trigger the poll a second time — same URLs are rejected by a unique constraint on `(source_name, article_url)`. Response shows `alerts_created: 0`. Container logs confirm:
 ```
