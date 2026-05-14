@@ -97,17 +97,17 @@ Client ──POST /documents──► FastAPI ──► ExtractionService ──
 │              (FastAPI routes + ASGI)             │
 ├──────────────────────────────────────────────────┤
 │              API Layer  (api/v1/)                │
-│   endpoints/  │  models/  │  ws/                │
+│   endpoints/  │  models/  │  ws/                 │
 ├──────────────────────────────────────────────────┤
 │             Service Layer  (services/)           │
 │  DocumentService │ ExtractionService │ GdeltSvc  │
 │  PollService     │ AlertService      │ EventBus  │
 ├──────────────────────────────────────────────────┤
-│           Repository Layer  (db/repositories/)  │
+│           Repository Layer  (db/repositories/)   │
 │  DocumentRepo │ AlertRepo │ PollRepo │ WsAudit   │
 ├──────────────────────────────────────────────────┤
 │         Persistence  (SQLite + aiosqlite)        │
-│   SQLAlchemy 2.0 async ORM │ WAL mode enabled   │
+│   SQLAlchemy 2.0 async ORM │ WAL mode enabled    │
 └──────────────────────────────────────────────────┘
 ```
 
