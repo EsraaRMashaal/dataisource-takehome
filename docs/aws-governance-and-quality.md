@@ -1,281 +1,132 @@
 # AWS, Governance, and Quality Notes
 
-This document covers the production AWS target, data governance posture,
-and code quality approach for the DataISource backend platform.
-
 ---
 
 ## 1. AWS Service Selection
 
-### Compute — ECS Fargate
-
-The FastAPI application runs as an ECS Fargate task. Fargate removes EC2 fleet management
-while keeping the deployment model familiar (Docker image → task definition → service).
-
-The in-process AsyncIO scheduler runs inside the same task in local and single-instance
-deployments. For multi-instance production, the scheduler is extracted to an EventBridge
-Scheduled Rule that invokes a separate Fargate task — this prevents duplicate poll runs
-when multiple replicas are active.
-
 | Layer | Dev / Local | Production |
 |---|---|---|
-| Runtime | Docker Compose | ECS Fargate |
-| Replicas | 1 | 2+ (rolling deploy) |
-| Scheduler | In-process AsyncIO loop | EventBridge → dedicated Fargate task |
-| Image registry | Local build | ECR |
+| Runtime | Docker Compose (single container) | ECS Fargate — rolling deploy, min 50% healthy |
+| Entry point | localhost:8800 | ALB (HTTPS :443 / WSS) behind AWS WAF |
+| Scheduler | In-process AsyncIO loop | EventBridge Scheduled Rule → dedicated Fargate task |
+| Database | SQLite + aiosqlite on host volume | RDS PostgreSQL + asyncpg (driver swap only, no code change) |
+| Raw docs | SQLite blob | S3 (SSE-S3), S3 key stored in DB row |
+| Config | `.env` file | SSM Parameter Store — SecureString for credentials |
+| Image registry | Local build | ECR (immutable tags, commit SHA) |
+| Logs | stdout plain-text | CloudWatch Logs JSON, 30-day retention |
+| Alerts | None | CloudWatch Alarms → SNS → PagerDuty |
 
-### Networking — ALB + WAF + VPC
-
+**Networking topology:**
 ```
-Internet → AWS WAF → Application Load Balancer (HTTPS :443 / WSS)
-                         ↓
-              ECS Fargate tasks (private subnet, no public IP)
-                         ↓
-              RDS PostgreSQL (isolated subnet, no internet route)
+Internet → AWS WAF → ALB (HTTPS/WSS)
+                       ↓
+          ECS Fargate tasks (private subnet, no public IP)
+                       ↓
+          RDS PostgreSQL (isolated subnet, port 5432 open to ECS SG only)
 ```
-
-- ALB handles HTTPS termination and WebSocket upgrade (`Upgrade: websocket`)
-- AWS WAF sits in front of the ALB: rate-limiting per IP, geo-block, common rule groups
-- Fargate tasks live in private subnets with no direct internet egress except through a NAT Gateway
-- GDELT API calls route outbound through the NAT Gateway — only port 443 egress is allowed by the security group
-
-### Database — SQLite (dev) → RDS PostgreSQL (prod)
-
-SQLite with aiosqlite is used locally. The async SQLAlchemy layer abstracts the driver:
-swapping to `asyncpg` and pointing `DATABASE_URL` at RDS requires no application code change.
-
-| Concern | SQLite (local) | RDS PostgreSQL (prod) |
-|---|---|---|
-| Concurrency | Single-writer, WAL mode | Full MVCC |
-| Horizontal scale | Not supported | Supported with read replicas |
-| Backups | Manual volume snapshot | Automated daily snapshots, PITR 7 days |
-| Encryption at rest | EFS volume encryption | AES-256 managed by RDS |
-| Connection pooling | Not needed | PgBouncer sidecar or RDS Proxy |
-
-### Storage — EFS (dev SQLite) → S3 (raw documents, prod)
-
-In local Docker the SQLite file is mounted via a host volume. In production, raw uploaded
-document content is stored in S3 with server-side encryption (SSE-S3). The `documents`
-table stores the S3 key, not the raw text blob, keeping the database row compact.
-
-### Config and Secrets — SSM Parameter Store
-
-All runtime configuration is injected via environment variables resolved from SSM Parameter
-Store at task startup. No secrets are baked into the Docker image or passed as plain-text
-ECS environment variables.
-
-| Parameter | Type | Rotation |
-|---|---|---|
-| `SQLITE_DB_PATH` / `DATABASE_URL` | String | On migration |
-| `GDELT_QUERY` | String | On demand |
-| `POLL_INTERVAL_SECONDS` | String | On demand |
-| `CORS_ORIGINS` | String | On demand |
-| `LOG_LEVEL` | String | On demand |
-| DB credentials (prod) | SecureString | 90-day forced rotation via Secrets Manager |
-
-### Observability — CloudWatch
-
-| Signal | Implementation |
-|---|---|
-| Structured logs | JSON emitted to stdout; captured by ECS and forwarded to CloudWatch Logs |
-| Log groups | One group per environment: `/datasource/api/prod`, `/datasource/api/dev` |
-| Metrics | ECS-native CPU and memory; custom metric namespace via EMF for alerts_created per poll run |
-| Alarms | P99 response time > 2s, error rate > 1%, ECS task count < desired |
-| Alerting | CloudWatch Alarm → SNS → PagerDuty or email |
-| Tracing | AWS X-Ray via the OpenTelemetry SDK middleware (FastAPI middleware shim) |
-
-### CI/CD — GitHub Actions → ECR → ECS
-
-```
-git push main
-  → GitHub Actions: ruff lint + mypy + pytest (62 tests)
-  → docker build + push to ECR
-  → aws ecs update-service --force-new-deployment
-  → ECS rolling deploy (min 50% healthy, max 200%)
-  → smoke test: GET /health on new task before draining old
-```
-
-No image is pushed to ECR unless all tests pass. The ECS rolling update ensures zero
-downtime deployments by keeping at least one old task healthy until the new task passes
-its ALB target group health check.
 
 ---
 
-## 2. Production Architecture Change: WebSocket Scaling
+## 2. WebSocket Scaling Note
 
-The current `ConnectionManager` is an in-memory singleton. With a single Fargate task
-this is correct. With two or more tasks, a client on task A would not receive an event
-published by a request handled on task B.
+The current `ConnectionManager` is in-memory. Correct for one replica; breaks at two
+because events published on task A do not reach connections held on task B.
 
-Production fix: replace the in-process `EventBus` pub/sub with ElastiCache Redis
-Pub/Sub. Each task subscribes to the Redis channel at startup. Every publish call
-writes to Redis instead of the local `_subs` dict. All tasks receive the message and
-fan-out to their local WebSocket connections.
-
-The `EventBus` interface (`publish`, `subscribe`) does not change. Only the backing
-implementation is swapped. Application code and tests require no changes.
+**Production fix:** replace the in-process `EventBus` with ElastiCache Redis Pub/Sub.
+Each task subscribes at startup; every `publish()` call writes to Redis; all tasks fan-out
+locally. The `EventBus` interface (`publish`, `subscribe`) does not change — only the
+backing implementation is swapped. No application or test changes required.
 
 ---
 
 ## 3. Data Governance
 
-### Data Classification
+### Data Classification and Retention
 
 | Data | Classification | Storage | Retention |
 |---|---|---|---|
-| Uploaded document text | Internal — potentially sensitive | S3 (prod), SQLite blob (dev) | 90 days default, configurable |
+| Uploaded document text | Internal | S3 (prod) / SQLite blob (dev) | 90 days |
 | Extracted keywords and entities | Internal | RDS / SQLite | Same as parent document |
-| GDELT article metadata | Public (sourced from public API) | RDS / SQLite | 30 days, then archive to S3 Glacier |
-| WebSocket audit log (`websocket_messages`) | Internal — operational | RDS / SQLite | 7 days rolling |
-| Poll run records | Internal — operational | RDS / SQLite | 90 days |
-| CloudWatch logs | Internal — operational | CloudWatch | 30 days log group retention |
-
-### Access Control
-
-- ECS task role uses an IAM execution role with least-privilege policies: `ssm:GetParameter`
-  for its own parameter paths, `s3:PutObject` and `s3:GetObject` for its own bucket prefix only
-- RDS is in an isolated subnet with a security group that allows inbound 5432 only from the
-  ECS task security group — no public access
-- S3 bucket policy blocks all public access; no `s3:GetObject` without a signed URL
-- No customer PII is ingested by design; the system processes manufacturing specification
-  documents and public news metadata only
+| GDELT article metadata | Public | RDS / SQLite | 30 days → S3 Glacier |
+| WebSocket audit log | Operational | RDS / SQLite | 7 days rolling |
+| Poll run records | Operational | RDS / SQLite | 90 days |
+| CloudWatch logs | Operational | CloudWatch | 30 days |
 
 ### Encryption
 
 | Layer | Mechanism |
 |---|---|
-| In-transit (API) | TLS 1.2+ enforced at ALB; HTTP is redirected to HTTPS |
-| In-transit (DB) | `sslmode=require` on the asyncpg connection string |
-| In-transit (S3) | HTTPS only; bucket policy denies `aws:SecureTransport = false` |
-| At-rest (RDS) | AES-256, RDS managed key |
-| At-rest (S3) | SSE-S3 default encryption on the bucket |
-| At-rest (EFS dev) | EFS encryption at rest enabled on the volume |
-| Secrets | SSM SecureString encrypted with a customer-managed KMS key |
+| In-transit API | TLS 1.2+ at ALB; HTTP redirected to HTTPS |
+| In-transit DB | `sslmode=require` on asyncpg connection string |
+| In-transit S3 | HTTPS only; bucket policy denies non-secure transport |
+| At-rest RDS | AES-256, RDS managed key |
+| At-rest S3 | SSE-S3 default bucket encryption |
+| Secrets | SSM SecureString — customer-managed KMS key |
 
-### Audit Trail
+### Access Control
 
-- Every WebSocket message emitted is written to the `websocket_messages` table
-  (channel, event name, correlation ID, payload, timestamp) — this creates an immutable
-  audit log of all real-time events without external infrastructure
-- CloudTrail is enabled at the AWS account level: all API calls to SSM, ECR, ECS, RDS,
-  and S3 are logged with actor identity and source IP
-- Application logs include a `correlation_id` field on every structured log line,
-  making it possible to trace a single document upload across ingest, extraction,
-  persistence, and WebSocket delivery
+- ECS task IAM role: `ssm:GetParameter` scoped to its own paths, `s3:PutObject/GetObject` scoped to its own prefix only
+- RDS security group: port 5432 inbound from ECS task SG only, no public access
+- S3 bucket: public access block enabled, no `GetObject` without signed URL
+- No PII ingested by design — system processes manufacturing specs and public news metadata only
 
 ### Deduplication and Idempotency
 
-- Document uploads: SHA-256 of the file content is stored in a unique column;
-  a second upload of the same file returns `409 DUPLICATE_DOCUMENT` without re-processing
-- Alert events: `(source_name, source_item_id)` and `(source_name, article_url)` carry
-  unique constraints; duplicate GDELT articles are rejected at the DB savepoint level
-  without rolling back the entire poll transaction
-- Poll runs: each run creates a `PollRun` record with a unique ID and status lifecycle
-  (`started → completed / failed`); partial failures are recoverable without data loss
+| Boundary | Mechanism |
+|---|---|
+| Document upload | SHA-256 unique column — second upload of same file returns `409 DUPLICATE_DOCUMENT` |
+| Alert creation | `(source_name, source_item_id)` and `(source_name, article_url)` unique constraints — rejected at DB savepoint without rolling back the poll transaction |
+| Poll runs | Each run creates a `PollRun` with `started → completed / failed` lifecycle — partial failures are recoverable |
+
+### Audit Trail
+
+- Every WebSocket message is written to `websocket_messages` (channel, event, correlation ID, payload, timestamp)
+- CloudTrail enabled at account level: all calls to SSM, ECR, ECS, RDS, S3 logged with actor identity and source IP
+- All structured log lines carry a `correlation_id` — traceable from upload through extraction, persistence, and WebSocket delivery
 
 ---
 
 ## 4. Code Quality
 
-### Testing
+### Tests
 
-62 automated tests across four files. Every test gets an isolated in-memory SQLite
-database. GDELT is mocked — no network calls during test runs.
+62 tests across 4 files. Each test uses an isolated in-memory SQLite. GDELT is mocked — no network.
 
-| File | Tests | Coverage area |
+| File | Tests | What is covered |
 |---|---|---|
-| `test_health.py` | 2 | Health endpoint shape and DB reachability |
-| `test_documents.py` | 31 | Upload success, validation failures, dedup, retrieval, delete, keywords, entities, UTC timestamps |
+| `test_health.py` | 2 | Status shape, DB reachability |
+| `test_documents.py` | 31 | Upload, dedup, extraction, retrieval, delete, keywords, entities, all validation failures |
 | `test_news.py` | 12 | Alert CRUD, poll lifecycle, GDELT mock success and failure |
-| `test_tables.py` | 17 | Table listing, pagination, row count, clear, delete single row |
+| `test_tables.py` | 17 | Table list, pagination, row counts, clear, delete single row |
 
-Validation failure cases tested explicitly: duplicate `409`, empty file `422`, whitespace-only
-`422`, unsupported MIME `415`, non-UTF-8 `422`, oversized filename `422`, path traversal `422`.
-
-Run locally:
-```bash
-docker compose -f app/docker-compose.yml run --rm api pytest -v
-```
+Validation failures tested explicitly: duplicate `409`, empty `422`, whitespace-only `422`, unsupported MIME `415`, non-UTF-8 `422`, oversized filename `422`, path traversal `422`.
 
 ### Static Analysis
 
-| Tool | Purpose | Gate |
+| Tool | Purpose | CI gate |
 |---|---|---|
-| `ruff` | Lint and import order | CI fail on any violation |
-| `mypy` | Static type checking | CI fail on type errors |
+| `ruff` | Lint + import order | Fail on any violation |
+| `mypy` | Static type checking | Fail on type errors |
 | `pytest-asyncio` | Async test runner | Required for all async endpoints |
 
-### Extraction Confidence Model
+### Error Contract
 
-Entity extraction uses a composite confidence score:
-
-```
-confidence = (pattern_weight × 0.5) + (validation_weight × 0.3) + (context_weight × 0.2)
-```
-
-All three weights are configurable via `CONFIDENCE_WEIGHT_PATTERN`,
-`CONFIDENCE_WEIGHT_VALIDATION`, `CONFIDENCE_WEIGHT_CONTEXT` environment variables.
-This allows tuning without a code change — useful when the extraction domain shifts
-from manufacturing RFQs to a different document type.
-
-### Error Handling Contract
-
-All validation failures return a machine-readable JSON body with an `error_code` field:
+All validation failures return machine-readable JSON with an `error_code` field:
 
 ```json
-{
-  "detail": "A document with this content already exists.",
-  "error_code": "DUPLICATE_DOCUMENT",
-  "document_id": "..."
-}
+{"detail": "A document with this content already exists.", "error_code": "DUPLICATE_DOCUMENT", "document_id": "..."}
 ```
 
-This allows callers to distinguish between a user error, a conflict, and a server fault
-without parsing the message string. HTTP status codes are used correctly: `409` for
-conflicts, `415` for media type, `422` for validation, `404` for not found, `500` for
-unhandled server errors.
+HTTP codes used correctly: `409` conflict · `415` media type · `422` validation · `404` not found · `500` server fault.
 
 ---
 
 ## 5. Assumptions and Trade-offs
 
-### SQLite in Production (Single Instance)
-
-SQLite is acceptable for a single-replica deployment with low concurrent write volume.
-The WAL mode enables concurrent reads during writes. The trade-off is that horizontal
-scaling requires a database migration to PostgreSQL. This migration is low-risk because
-the SQLAlchemy ORM layer abstracts the driver entirely.
-
-### In-Process Scheduler
-
-The AsyncIO scheduler runs inside the application process rather than as a separate
-worker. This keeps the local deployment to a single container. The trade-off is that
-the scheduler is not independently scalable and does not survive if the application
-process crashes mid-poll. Mitigation: the `PollRun` record captures `started_at` and
-`run_status`; a monitoring alarm on stale `started` records (older than two poll intervals)
-can detect a stuck scheduler.
-
-### spaCy Blank Pipeline
-
-The extraction engine uses a blank spaCy pipeline with rule-based pattern matchers — no
-pretrained model is loaded. This removes a large model download from the Docker build,
-keeps image size small, and makes extraction fully deterministic. The trade-off is lower
-recall on documents that deviate significantly from the RFQ pattern set. A path to
-improvement is plugging in a `en_core_web_sm` or a fine-tuned NER model behind the same
-`ExtractionService` interface without changing any other code.
-
-### GDELT as the News Source
-
-GDELT is a public, unauthenticated API with no SLA and rate-limiting behaviour that varies
-by time of day. The service handles this with exponential backoff (up to 3 retries per
-topic) and a `Semaphore(3)` to limit concurrent outbound requests. If GDELT is unavailable
-during a poll cycle, the `PollRun` is marked `failed` and the next scheduled cycle retries
-from scratch. No alert data is lost because failures are detected and logged before any
-database writes are attempted.
-
-### WebSocket Fan-out at Scale
-
-The in-memory `ConnectionManager` is correct for one replica. It becomes incorrect at two
-or more replicas because events published on task A are not visible to connections held on
-task B. The production fix (Redis Pub/Sub) is documented above and does not require
-application logic changes — only the `EventBus` backing implementation changes.
+| Decision | Trade-off |
+|---|---|
+| SQLite in dev / single-instance prod | Zero setup; WAL mode handles concurrent reads. Not horizontally scalable — migrate to RDS for multi-replica. SQLAlchemy ORM abstracts the driver so the migration is a config change only. |
+| In-process AsyncIO scheduler | Single container simplicity. Does not survive a mid-poll process crash. Mitigation: alarm on `PollRun` records stuck in `started` state for longer than two poll intervals. |
+| spaCy blank pipeline | No model download, deterministic output, small image. Lower recall on documents outside the RFQ pattern set. Upgrade path: swap in `en_core_web_sm` or a fine-tuned NER behind the same `ExtractionService` interface. |
+| GDELT as news source | Public, no auth, no SLA. Mitigated by retry logic and exponential backoff. If unavailable, `PollRun` is marked `failed` and next cycle retries from scratch — no data is lost. |
+| In-memory WebSocket fan-out | Correct for one replica; breaks at two. Production fix is Redis Pub/Sub with no application code changes (see section 2). |
