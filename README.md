@@ -196,87 +196,76 @@ Scheduler (asyncio) ─── every POLL_INTERVAL_SECONDS ──►┐
 ## Project Structure
 
 ```
-backend_platform_takehome/
-├── app/                          ← main application (this folder)
-│   ├── server.py                 ← FastAPI app factory + lifespan
-│   ├── settings.py               ← Pydantic BaseSettings (env-driven config)
-│   ├── logger.py                 ← structured logging setup
-│   ├── ui.py                     ← static file / partial serving
-│   ├── .env                      ← runtime environment variables
-│   ├── Dockerfile                ← container definition
-│   ├── docker-compose.yml        ← local orchestration
-│   ├── requirements.txt          ← pinned Python dependencies
-│   │
-│   ├── api/v1/
-│   │   ├── endpoints/
-│   │   │   ├── documents.py      ← upload, list, get, delete, keywords, entities
-│   │   │   ├── news.py           ← poll trigger, alert list/get/delete
-│   │   │   ├── tables.py         ← database explorer endpoints
-│   │   │   ├── health.py         ← liveness + readiness probe
-│   │   │   └── websocket.py      ← WS upgrade handler
-│   │   ├── models/
-│   │   │   ├── request_models.py ← Pydantic request schemas
-│   │   │   └── response_models.py← Pydantic response schemas
-│   │   └── ws/
-│   │       └── connection_manager.py ← WebSocket registry + broadcast
-│   │
-│   ├── db/
-│   │   ├── database.py           ← async engine, session factory, get_db dependency
-│   │   ├── sqlite/
-│   │   │   ├── base.py           ← SQLAlchemy ORM models
-│   │   │   └── __init__.py       ← WAL mode + FK pragmas
-│   │   └── repositories/
-│   │       ├── document_repository.py
-│   │       ├── alert_repository.py
-│   │       ├── poll_repository.py
-│   │       └── ws_message_repository.py
-│   │
-│   ├── services/
-│   │   ├── document_service.py   ← document ingestion orchestration
-│   │   ├── extraction_service.py ← extraction pipeline coordinator
-│   │   ├── extraction_engine.py  ← spaCy rule-based patterns
-│   │   ├── extraction_models.py  ← extraction dataclasses
-│   │   ├── gdelt_service.py      ← GDELT API async client
-│   │   ├── poll_service.py       ← polling orchestration
-│   │   ├── alert_service.py      ← alert CRUD + lifecycle
-│   │   └── event_bus.py          ← in-process async pub/sub
-│   │
-│   ├── workers/
-│   │   ├── polling_worker.py     ← poll cycle executor
-│   │   └── scheduler.py          ← asyncio-based scheduler
-│   │
-│   ├── static/
-│   │   ├── index.html            ← SPA shell
-│   │   ├── css/                  ← Bootstrap + custom styles
-│   │   ├── js/                   ← ES6 modules (api/, views, utils)
-│   │   └── partials/             ← HTML fragments (dynamically loaded)
-│   │
-│   └── tests/
-│       ├── conftest.py           ← async test fixtures, DB isolation
-│       ├── test_documents.py     ← 31 document endpoint tests
-│       ├── test_health.py        ← health check tests
-│       ├── test_news.py          ← alert + polling tests (mocked GDELT)
-│       └── test_tables.py        ← database explorer tests
+/  (repository root)
+├── server.py                 ← FastAPI app factory + lifespan
+├── settings.py               ← Pydantic BaseSettings (env-driven config)
+├── logger.py                 ← structured logging setup
+├── ui.py                     ← static file / partial serving
+├── .env                      ← runtime environment variables
+├── Dockerfile                ← container definition
+├── docker-compose.yml        ← local orchestration
+├── requirements.txt          ← pinned Python dependencies
+├── pytest.ini                ← asyncio_mode = auto, testpaths = tests
 │
-├── assets/
-│   ├── input/
-│   │   └── manufacturing_rfq_sample.txt ← sample document
-│   └── db/
-│       └── sqlite_schema.sql     ← reference schema
-├── data/
-│   └── DataISource-takehome.sqlite3     ← runtime database
+├── api/v1/
+│   ├── endpoints/
+│   │   ├── documents.py      ← upload, list, get, delete, keywords, entities
+│   │   ├── news.py           ← poll trigger, alert list/get/delete
+│   │   ├── tables.py         ← database explorer endpoints
+│   │   ├── health.py         ← liveness + readiness probe
+│   │   └── websocket.py      ← WS upgrade handler
+│   ├── models/
+│   │   ├── request_models.py ← Pydantic request schemas
+│   │   └── response_models.py← Pydantic response schemas
+│   └── ws/
+│       └── connection_manager.py ← WebSocket registry + broadcast
+│
+├── db/
+│   ├── database.py           ← async engine, session factory, get_db dependency
+│   ├── sqlite/
+│   │   ├── base.py           ← SQLAlchemy ORM models
+│   │   └── __init__.py       ← WAL mode + FK pragmas
+│   └── repositories/
+│       ├── document_repository.py
+│       ├── alert_repository.py
+│       ├── poll_repository.py
+│       └── ws_message_repository.py
+│
+├── services/
+│   ├── document_service.py   ← document ingestion orchestration
+│   ├── extraction_service.py ← extraction pipeline coordinator
+│   ├── extraction_engine.py  ← spaCy rule-based patterns
+│   ├── extraction_models.py  ← extraction dataclasses
+│   ├── gdelt_service.py      ← GDELT API async client
+│   ├── poll_service.py       ← polling orchestration
+│   ├── alert_service.py      ← alert CRUD + lifecycle
+│   └── event_bus.py          ← in-process async pub/sub
+│
+├── workers/
+│   ├── polling_worker.py     ← poll cycle executor
+│   └── scheduler.py          ← asyncio-based scheduler
+│
+├── static/
+│   ├── index.html            ← SPA shell
+│   ├── css/                  ← Bootstrap + custom styles
+│   ├── js/                   ← ES6 modules (api/, views, utils)
+│   └── partials/             ← HTML fragments (dynamically loaded)
+│
+├── tests/
+│   ├── conftest.py           ← async test fixtures, DB isolation
+│   ├── test_documents.py     ← 31 document endpoint tests
+│   ├── test_health.py        ← health check tests
+│   ├── test_news.py          ← alert + polling tests (mocked GDELT)
+│   └── test_tables.py        ← database explorer tests
+│
 ├── docs/
 │   ├── diagram-requirements.md
 │   ├── local-run-and-testing.md
-│   └── submission-checklist.md
-├── examples/
-│   ├── Dockerfile.example
-│   ├── docker-compose.example.yml
-│   ├── websocket-test-page.html
-│   └── gdelt-polling-local-hint.md
-├── requirements.txt              ← root-level (mirrors app/requirements.txt)
-├── pytest.ini                    ← asyncio_mode = auto, testpaths = app/tests
-└── sample.env                    ← example environment variables
+│   ├── aws-governance-and-quality.md
+│   └── manufacturing_rfq_sample.txt  ← sample RFQ document
+│
+└── data/                     ← SQLite DB written here at runtime (gitignored)
+    └── DataISource-takehome.sqlite3
 ```
 
 ---
@@ -559,7 +548,7 @@ Retry logic: exponential backoff with rate-limit handling for GDELT API calls.
 
 ## Configuration
 
-All configuration is loaded from environment variables (see `app/settings.py`):
+All configuration is loaded from environment variables (see `settings.py`):
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -575,7 +564,7 @@ All configuration is loaded from environment variables (see `app/settings.py`):
 | `CONFIDENCE_WEIGHT_VALIDATION` | `0.3` | NLP confidence weight |
 | `CONFIDENCE_WEIGHT_CONTEXT` | `0.2` | NLP confidence weight |
 
-Copy `sample.env` to `app/.env` and adjust as needed.
+Copy `sample.env` to `.env` and adjust as needed.
 
 ---
 
@@ -589,12 +578,9 @@ Copy `sample.env` to `app/.env` and adjust as needed.
 ### Install & Run
 
 ```bash
-# from project root
+# from the repository root
 pip install -r requirements.txt
-
-# run the app
-cd app
-uvicorn server:app --host 0.0.0.0 --port 8800 --reload
+uvicorn app.server:app --host 0.0.0.0 --port 8800 --reload
 ```
 
 The SPA is served at `http://localhost:8800`.  
@@ -602,11 +588,11 @@ Interactive API docs (Swagger UI) at `http://localhost:8800/docs`.
 
 ### Sample Document
 
-A sample RFQ is provided at `assets/input/manufacturing_rfq_sample.txt`. Upload it via the UI or:
+A sample RFQ is provided at `docs/manufacturing_rfq_sample.txt`. Upload it via the UI or:
 
 ```bash
 curl -X POST http://localhost:8800/api/v1/documents \
-  -F "file=@assets/input/manufacturing_rfq_sample.txt"
+  -F "file=@docs/manufacturing_rfq_sample.txt"
 ```
 
 ---
@@ -614,26 +600,26 @@ curl -X POST http://localhost:8800/api/v1/documents \
 ## Docker Setup
 
 ```bash
-# from project root
-docker-compose -f app/docker-compose.yml up --build
+# from the repository root
+docker compose up --build
 ```
 
 The compose file:
-- Builds from project root context
+- Builds from the repository root context
 - Mounts `./data/` → `/app/data/` for SQLite persistence
-- Mounts `./assets/` → `/app/assets/` (read-only)
+- Mounts `./docs/` → `/app/docs/` (read-only, includes sample RFQ)
 - Exposes port `8800`
-- Health check: `curl /api/v1/health` every 15 s
+- Health check: `GET /api/v1/health` every 15 s
 - Restart policy: `unless-stopped`
 
 To run in detached mode:
 ```bash
-docker-compose -f app/docker-compose.yml up -d
+docker compose up -d
 ```
 
 Tear down:
 ```bash
-docker-compose -f app/docker-compose.yml down
+docker compose down
 ```
 
 ---
@@ -641,8 +627,11 @@ docker-compose -f app/docker-compose.yml down
 ## Running Tests
 
 ```bash
-# from project root
+# from the repository root (local)
 pytest
+
+# inside Docker
+docker compose run --rm api pytest -v
 ```
 
 Tests use an isolated per-test SQLite database (temp file, cleaned up after each test). No network calls are made — GDELT is mocked.
@@ -658,7 +647,11 @@ Tests use an isolated per-test SQLite database (temp file, cleaned up after each
 
 Run a specific test file:
 ```bash
-pytest app/tests/test_documents.py -v
+# local
+pytest tests/test_documents.py -v
+
+# inside Docker
+docker compose run --rm api pytest app/tests/test_documents.py -v
 ```
 
 Run with coverage:
@@ -670,7 +663,7 @@ pytest --cov=app --cov-report=term-missing
 
 ## Frontend SPA
 
-The zero-build SPA is served from `app/static/` and loaded by `app/ui.py`.
+The zero-build SPA is served from `static/` and loaded by `ui.py`.
 
 ### Views
 
