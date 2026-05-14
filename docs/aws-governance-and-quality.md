@@ -11,7 +11,7 @@
 | Background scheduler | In-process asyncio loop | EventBridge Scheduled Rule → dedicated Fargate task |
 | Database | SQLite + aiosqlite (host volume) | RDS PostgreSQL + asyncpg (driver swap only, no code change) |
 | Document storage | SQLite `raw_text` column | S3 (SSE-S3); S3 key stored in DB row |
-| Config / secrets | `app/.env` file | SSM Parameter Store SecureString (KMS-encrypted) |
+| Config / secrets | `.env` file | SSM Parameter Store SecureString (KMS-encrypted) |
 | Container registry | Local build | ECR (immutable tags, commit SHA) |
 | Logs | stdout plain-text | CloudWatch Logs (JSON structured, 30-day retention) |
 | Alerts | None | CloudWatch Alarms → SNS → PagerDuty |

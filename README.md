@@ -27,10 +27,7 @@ A supplier-intelligence backend platform for manufacturing RFQ (Request for Quot
 - [WebSocket Channels](#websocket-channels)
 - [NLP Extraction Pipeline](#nlp-extraction-pipeline)
 - [GDELT Monitoring](#gdelt-monitoring)
-- [Configuration](#configuration)
-- [Local Setup](#local-setup)
-- [Docker Setup](#docker-setup)
-- [Running Tests](#running-tests)
+- [Getting Started](#getting-started)
 - [Frontend SPA](#frontend-spa)
 - [Design Decisions](#design-decisions)
 
@@ -546,118 +543,20 @@ Retry logic: exponential backoff with rate-limit handling for GDELT API calls.
 
 ---
 
-## Configuration
+## Getting Started
 
-All configuration is loaded from environment variables (see `settings.py`):
+Full startup instructions, environment variables, Docker commands, test runner commands, and the live demo walkthrough are in:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `APP_ENV` | `local` | Environment name |
-| `PORT` | `8800` | Uvicorn listen port |
-| `LOG_LEVEL` | `INFO` | Python log level |
-| `CORS_ORIGINS` | `["*"]` | Allowed CORS origins (JSON array) |
-| `SQLITE_DB_PATH` | `/app/data/DataISource-takehome.sqlite3` | Database file path |
-| `MONITOR_SOURCE` | `gdelt` | News source |
-| `GDELT_QUERY` | `manufacturing supply chain disruption` | Base GDELT query |
-| `POLL_INTERVAL_SECONDS` | `300` | Background poll interval |
-| `CONFIDENCE_WEIGHT_PATTERN` | `0.5` | NLP confidence weight |
-| `CONFIDENCE_WEIGHT_VALIDATION` | `0.3` | NLP confidence weight |
-| `CONFIDENCE_WEIGHT_CONTEXT` | `0.2` | NLP confidence weight |
+**[docs/local-run-and-testing.md](docs/local-run-and-testing.md)**
 
-Copy `sample.env` to `.env` and adjust as needed.
-
----
-
-## Local Setup
-
-### Prerequisites
-
-- Python 3.13+
-- pip
-
-### Install & Run
+Quick start:
 
 ```bash
-# from the repository root
-pip install -r requirements.txt
-uvicorn app.server:app --host 0.0.0.0 --port 8800 --reload
-```
-
-The SPA is served at `http://localhost:8800`.  
-Interactive API docs (Swagger UI) at `http://localhost:8800/docs`.
-
-### Sample Document
-
-A sample RFQ is provided at `docs/manufacturing_rfq_sample.txt`. Upload it via the UI or:
-
-```bash
-curl -X POST http://localhost:8800/api/v1/documents \
-  -F "file=@docs/manufacturing_rfq_sample.txt"
-```
-
----
-
-## Docker Setup
-
-```bash
-# from the repository root
+cp sample.env .env
 docker compose up --build
 ```
 
-The compose file:
-- Builds from the repository root context
-- Mounts `./data/` → `/app/data/` for SQLite persistence
-- Mounts `./docs/` → `/app/docs/` (read-only, includes sample RFQ)
-- Exposes port `8800`
-- Health check: `GET /api/v1/health` every 15 s
-- Restart policy: `unless-stopped`
-
-To run in detached mode:
-```bash
-docker compose up -d
-```
-
-Tear down:
-```bash
-docker compose down
-```
-
----
-
-## Running Tests
-
-```bash
-# from the repository root (local)
-pytest
-
-# inside Docker
-docker compose run --rm api pytest -v
-```
-
-Tests use an isolated per-test SQLite database (temp file, cleaned up after each test). No network calls are made — GDELT is mocked.
-
-### Test Coverage
-
-| File | Tests | Covers |
-|------|-------|--------|
-| `test_documents.py` | 31 | upload, validation, retrieval, deletion, keywords, entities, UTC datetimes |
-| `test_health.py` | 2 | endpoint availability, DB connectivity shape |
-| `test_news.py` | ~12 | alert CRUD, on-demand poll, mocked GDELT success/failure |
-| `test_tables.py` | — | database explorer list, paginate, clear, delete row |
-
-Run a specific test file:
-```bash
-# local
-pytest tests/test_documents.py -v
-
-# inside Docker
-docker compose run --rm api pytest app/tests/test_documents.py -v
-```
-
-Run with coverage:
-```bash
-pytest --cov=app --cov-report=term-missing
-```
+Open `http://localhost:8800/index.html` (SPA) and `http://localhost:8800/docs` (Swagger UI).
 
 ---
 
@@ -703,13 +602,7 @@ static/js/
 ├── news.js            ← news monitor view
 ├── tables.js          ← DB explorer view
 ├── api-test.js        ← REST test harness
-└── api/
-    ├── _base.js       ← HTTP fetch wrapper + error handling
-    ├── documents.js   ← document API calls
-    ├── news.js        ← alert + poll API calls
-    ├── health.js      ← health check
-    ├── tables.js      ← table explorer calls
-    └── index.js       ← re-exports
+└── api.js             ← HTTP fetch wrapper + all API calls (health, documents, news, tables)
 ```
 
 ---
@@ -741,16 +634,9 @@ FastAPI + Uvicorn (ASGI), SQLAlchemy async sessions, httpx async client, and asy
 
 ### Production Path (AWS)
 
-If this were going to AWS, the natural mapping would be:
+For the full AWS service mapping, WebSocket scaling strategy (Redis Pub/Sub), data governance (retention, encryption, access control), deduplication constraints, and assumption trade-offs, see:
 
-| Component | AWS Service |
-|-----------|------------|
-| API | ECS Fargate (or Lambda + API Gateway for pure serverless) |
-| Database | RDS PostgreSQL (replace SQLite) |
-| WebSocket | API Gateway WebSocket API + DynamoDB for connection registry |
-| Background Polling | EventBridge Scheduler → Lambda |
-| File Storage | S3 (replace local multipart) |
-| Observability | CloudWatch Logs + X-Ray tracing |
+**[docs/aws-governance-and-quality.md](docs/aws-governance-and-quality.md)**
 
 ---
 
