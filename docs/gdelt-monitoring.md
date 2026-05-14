@@ -88,7 +88,7 @@ GET https://api.gdeltproject.org/api/v2/doc/doc
 
 ## Data Model
 
-See `alert_events` table in the [README Database Schema](docs/data-extraction.md#4-database-schema).
+See `alert_events` table in the [README Database Schema](data-extraction.md#4-database-schema).
 
 Unique constraints prevent duplicate articles:
 - `(source_name, article_url)` — URL-level dedup across all poll runs
