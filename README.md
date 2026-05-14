@@ -32,6 +32,7 @@ A supplier-intelligence backend platform for manufacturing RFQ (Request for Quot
 - [Design Decisions](#design-decisions)
 - [Documentation](#documentation)
 - [Screenshots](#screenshots)
+- [Data Extraction Guide](#data-extraction-guide)
 
 ---
 
@@ -617,6 +618,7 @@ static/js/
 | [local-run-and-testing.md](docs/local-run-and-testing.md) | Docker setup, environment variables, test runner commands, and demo walkthrough |
 | [aws-governance-and-quality.md](docs/aws-governance-and-quality.md) | AWS service mapping, WebSocket scaling strategy, data governance, and trade-offs |
 | [gdelt-monitoring.md](docs/gdelt-monitoring.md) | GDELT poll cycle, retry strategy, monitor topics, API details, and WebSocket events |
+| [data-extraction.md](docs/data-extraction.md) | End-to-end guide for NLP document extraction and GDELT news extraction — pipelines, APIs, and real-time events |
 | [manufacturing_rfq_sample.txt](docs/manufacturing_rfq_sample.txt) | Sample RFQ document for testing the extraction pipeline |
 
 > **Quick note:** Start with `local-run-and-testing.md` to get the app running locally, then use `aws-governance-and-quality.md` for the production architecture rationale, and `diagram-requirements.md` for the full visual system overview.
@@ -651,6 +653,8 @@ static/js/
 |---|---|
 | ![Alerts](docs/screenshoots/news-monitor.png) | ![Alert detail](docs/screenshoots/news-details.png) |
 | GDELT alerts list | Alert detail |
+| ![Notification](docs/screenshoots/news-notification.png) | |
+| News notification | |
 
 ### Database Explorer
 
