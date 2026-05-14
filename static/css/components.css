@@ -333,7 +333,7 @@
 .ws-type.ws-closed      { background: rgba(74,95,138,.12);  border-color: rgba(74,95,138,.3);  color: #64748b; }
 
 .ws-payload {
-  color: #3d5078; font-size: .59rem;
+  color: #7c8ba8; font-size: .59rem;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   padding-left: .05rem;
 }
