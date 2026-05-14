@@ -152,6 +152,7 @@ graph TB
 ## 2. REST Data Flow Zoomed View
 
 ```mermaid
+%%{init: {'theme': 'default', 'themeVariables': {'background': '#ffffff', 'primaryTextColor': '#000000', 'noteBkgColor': '#fff9c4', 'noteTextColor': '#000000'}}}%%
 sequenceDiagram
     participant C  as Client
     participant EP as documents.py
@@ -163,7 +164,7 @@ sequenceDiagram
     participant EB as EventBus
     participant CM as ConnectionManager
 
-    rect rgb(255, 249, 196)
+    rect rgb(255, 236, 80)
         Note over EP: VALIDATE — Pydantic UploadFile schema
         C->>EP: POST /api/v1/documents  multipart/form-data
         EP->>DS: ingest(file)
@@ -175,14 +176,14 @@ sequenceDiagram
     DR->>DB: SELECT Document WHERE sha256=?
     DB-->>DS: None — no duplicate, proceed
 
-    rect rgb(187, 222, 251)
+    rect rgb(100, 181, 246)
         Note over DS,DB: PERSIST — create Document row
         DS->>DR: create_document(status=pending)
         DR->>DB: INSERT Document
         DB-->>DS: Document id=N
     end
 
-    rect rgb(237, 231, 246)
+    rect rgb(206, 147, 216)
         Note over EB: ASYNC — asyncio.gather fan-out
         DS->>EB: publish documents · document.progress pct=20 stage=storing
         EB->>CM: _on_documents(event)
@@ -193,7 +194,7 @@ sequenceDiagram
         CM-->>C: WS broadcast document.progress 45%
     end
 
-    rect rgb(200, 230, 201)
+    rect rgb(102, 187, 106)
         Note over DS,EE: BIZ LOGIC — NLP extraction pipeline
         DS->>ES: analyze(raw_text)
         ES->>EE: detect_type(doc) → rfq | specification | document
@@ -204,12 +205,12 @@ sequenceDiagram
         ES-->>DS: ExtractionResult(doc_type, keywords, entities)
     end
 
-    rect rgb(237, 231, 246)
+    rect rgb(206, 147, 216)
         DS->>EB: publish documents · document.progress pct=70 stage=indexing
         CM-->>C: WS broadcast document.progress 70%
     end
 
-    rect rgb(187, 222, 251)
+    rect rgb(100, 181, 246)
         Note over DS,DB: PERSIST — bulk write extracted data
         DS->>DR: bulk_create_keywords(doc_id, keywords)
         DR->>DB: INSERT ExtractedKeyword batch
@@ -217,17 +218,17 @@ sequenceDiagram
         DR->>DB: INSERT ExtractedEntity batch
     end
 
-    rect rgb(237, 231, 246)
+    rect rgb(206, 147, 216)
         DS->>EB: publish documents · document.progress pct=90 stage=committing
         CM-->>C: WS broadcast document.progress 90%
     end
 
-    rect rgb(187, 222, 251)
+    rect rgb(100, 181, 246)
         DS->>DB: COMMIT transaction
         DS->>DR: update Document status=completed
     end
 
-    rect rgb(237, 231, 246)
+    rect rgb(206, 147, 216)
         DS->>EB: publish documents · document.completed doc_id=N
         DS->>EB: publish records · record.created table=documents
         CM-->>C: WS broadcast document.completed
