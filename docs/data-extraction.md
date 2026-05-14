@@ -199,7 +199,113 @@ manufacturing delays, transport strike, industrial shutdown
 
 ---
 
-## 4. Key Files
+## 4. Database Schema
+
+### `documents`
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | TEXT PK | UUID |
+| `source_filename` | TEXT | original filename |
+| `source_mime_type` | TEXT | nullable |
+| `source_sha256` | TEXT UNIQUE | deduplication hash |
+| `raw_text` | TEXT | full document content |
+| `document_type` | TEXT | `rfq` \| `specification` \| `document` |
+| `upload_origin` | TEXT | default `local` |
+| `processing_status` | TEXT CHECK | `pending` \| `processed` \| `failed` |
+| `created_at` | DATETIME | UTC |
+| `processed_at` | DATETIME | nullable, UTC |
+
+---
+
+### `extracted_keywords`
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | INTEGER PK | autoincrement |
+| `document_id` | TEXT FK | → documents, CASCADE DELETE |
+| `keyword` | TEXT | original form |
+| `normalized_keyword` | TEXT | lowercase |
+| `score` | FLOAT | confidence 0.0 – 1.0 |
+| `source_method` | TEXT | e.g. `keyword_section`, `material_grade_pattern` |
+| `created_at` | DATETIME | UTC |
+
+Unique constraint: `(document_id, normalized_keyword)`
+
+---
+
+### `extracted_entities`
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | INTEGER PK | autoincrement |
+| `document_id` | TEXT FK | → documents, CASCADE DELETE |
+| `entity_type` | TEXT | `material`, `quantity`, `unit`, `tolerance`, `certification`, `incoterm`, … |
+| `entity_value` | TEXT | raw extracted text |
+| `normalized_value` | TEXT | nullable, standardized |
+| `confidence` | FLOAT | 0.0 – 1.0 |
+| `quantity_value` | FLOAT | nullable, numeric component |
+| `unit` | TEXT | nullable, e.g. `pcs`, `mm` |
+| `start_offset` | INTEGER | nullable, char offset in source text |
+| `end_offset` | INTEGER | nullable |
+| `created_at` | DATETIME | UTC |
+
+---
+
+### `alert_events`
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | TEXT PK | UUID |
+| `poll_run_id` | TEXT FK | → poll_runs, SET NULL on delete |
+| `source_name` | TEXT | `gdelt` |
+| `source_item_id` | TEXT | nullable, GDELT identifier |
+| `article_url` | TEXT | source URL |
+| `article_title` | TEXT | headline |
+| `published_at` | DATETIME | nullable |
+| `matched_terms_json` | TEXT | JSON array of matched topics |
+| `payload_json` | TEXT | full GDELT response JSON |
+| `alert_status` | TEXT CHECK | `detected` \| `notified` \| `duplicate` \| `failed` |
+| `detected_at` | DATETIME | UTC |
+| `notified_at` | DATETIME | nullable |
+| `processing_error` | TEXT | nullable |
+
+Unique constraints:
+- `(source_name, article_url)` — URL-level deduplication
+- Partial unique on `(source_name, source_item_id)` where `source_item_id IS NOT NULL`
+
+---
+
+### `poll_runs`
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | TEXT PK | UUID |
+| `source_name` | TEXT | `gdelt` |
+| `query_text` | TEXT | topics queried or `configured_monitor_topics` |
+| `window_start` | DATETIME | nullable |
+| `window_end` | DATETIME | nullable |
+| `run_status` | TEXT CHECK | `started` \| `completed` \| `failed` |
+| `items_seen` | INTEGER | articles fetched |
+| `alerts_created` | INTEGER | new alerts persisted |
+| `started_at` | DATETIME | UTC |
+| `completed_at` | DATETIME | nullable |
+| `error_message` | TEXT | nullable |
+
+### `websocket_messages` (audit log)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | INTEGER PK | autoincrement |
+| `channel_name` | TEXT | `documents`, `alerts`, `records`, `all` |
+| `event_name` | TEXT | e.g. `document.completed`, `alert.detected` |
+| `correlation_id` | TEXT | nullable, trace ID |
+| `message_json` | TEXT | full JSON payload |
+| `emitted_at` | DATETIME | UTC |
+
+---
+
+## 5. Key Files
 
 | File | Role |
 |------|------|
